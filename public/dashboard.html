@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+<title>Polar.web.id — Bot WhatsApp Gratis 🪙</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body id="body" class="locked-bg">
+
+<div id="splash">
+  <div class="splash-container">
+    <div class="splash-name">Polar.web.id</div>
+    <div class="splash-spinner"></div>
+    <div class="splash-sub">Memuat dashboard...</div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="loading-box">
+    <div class="loading-spinner"></div>
+    <div class="loading-title" id="loadingTitle">Memproses...</div>
+    <div class="loading-desc" id="loadingDesc">Mohon tunggu sebentar</div>
+  </div>
+</div>
+
+<div class="pairing-overlay" id="pairingOverlay">
+  <div class="pairing-box">
+    <div style="text-align:center;margin-bottom:12px;">
+      <span style="font-size:40px;">🔗</span>
+      <h3 style="font-weight:900;font-size:20px;margin-top:6px;text-transform:uppercase;">Tautkan Perangkat</h3>
+      <p style="color:var(--text-muted);font-size:12px;font-weight:500;">Scan atau masukkan kode di WhatsApp</p>
+    </div>
+    <div class="pairing-code" id="pairingCodeDisplay">Menunggu...</div>
+    <ol>
+      <li>Buka WhatsApp → Settings</li>
+      <li>Perangkat Tertaut → Tautkan Perangkat</li>
+      <li>Masukkan kode di atas</li>
+    </ol>
+    <button class="btn btn-orange btn-full" style="margin-top:12px;" onclick="copyPairingCode()"><i class="fas fa-copy"></i> Salin Kode</button>
+    <button class="btn btn-close-modal btn-full" style="margin-top:6px;" onclick="closePairingModal()">Tutup</button>
+  </div>
+</div>
+
+<nav class="navbar">
+  <div class="nav-brand"><span class="brand-icon">✦</span> POLAR.WEB.ID</div>
+  <div class="nav-right">
+    <div class="coin-badge"><i class="fas fa-coins"></i> <span id="coinCount">0</span></div>
+    <div class="profile-btn" onclick="navTo('profile')">
+      <img id="navAvatar" src="https://ui-avatars.com/api/?name=U" alt="Avatar">
+      <span class="hide-mobile" id="navName">...</span>
+    </div>
+    <button class="menu-btn" onclick="toggleMenu()"><i class="fas fa-bars"></i></button>
+  </div>
+</nav>
+
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleMenu()"></div>
+<div class="sidebar" id="sidebar">
+  <div class="sidebar-header">
+    <div class="nav-brand" style="font-size:14px;"><span class="brand-icon">✦</span> MENU</div>
+    <button class="sidebar-close" onclick="toggleMenu()"><i class="fas fa-times"></i></button>
+  </div>
+  <a href="#" class="nav-link" onclick="navTo('home'); toggleMenu();"><i class="fas fa-home"></i> HOME</a>
+  <a href="#" class="nav-link" onclick="navTo('status'); toggleMenu();"><i class="fas fa-server"></i> STATUS</a>
+  <a href="#" class="nav-link" onclick="navTo('claim'); toggleMenu();"><i class="fas fa-download"></i> CLAIM</a>
+  <a href="#" class="nav-link" onclick="navTo('sessions'); toggleMenu();"><i class="fas fa-robot"></i> SESSIONS</a>
+  <a href="#" class="nav-link" onclick="navTo('profile'); toggleMenu();"><i class="fas fa-user"></i> PROFILE</a>
+  <a href="#" class="nav-link" onclick="earnCoin()" style="background:var(--gold);"><i class="fas fa-coins" style="color:#111;"></i> EARN POLAR COIN</a>
+  <a href="#" class="nav-link" onclick="logout()" style="background:var(--red);color:#fff;margin-top:auto;"><i class="fas fa-sign-out-alt"></i> LOGOUT</a>
+</div>
+
+<div class="main-container">
+
+  <!-- HOME -->
+  <div id="sec-home" class="section active">
+    <div class="hero">
+      <div class="slot-badge"><i class="fas fa-circle" style="font-size:8px;color:var(--orange);"></i> <span id="slotFreeHome">-</span> SLOT TERSEDIA</div>
+      <h1>Jadibot <br><span>WhatsApp Gratis</span></h1>
+      <p>Dapatkan server bot gratis. Claim sekarang sebelum slot habis!</p>
+      <div class="btn-group">
+        <button class="btn btn-orange" onclick="navTo('claim')"><i class="fas fa-download"></i> CLAIM SEKARANG</button>
+        <button class="btn btn-white" onclick="navTo('status')">LIHAT STATUS <i class="fas fa-arrow-right"></i></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- CLAIM -->
+  <div id="sec-claim" class="section">
+    <div style="text-align:center;margin-bottom:16px;">
+      <div class="slot-badge"><span id="slotFreeClaim">-</span> SLOT TERSEDIA</div>
+      <h1 style="font-weight:900;font-size:clamp(26px,6vw,36px);text-transform:uppercase;">CLAIM <span style="background:#111;color:#fff;padding:0 12px;transform:skew(-6deg);display:inline-block;border:var(--border-thick);box-shadow:var(--shadow-light);">SERVER</span></h1>
+      <p style="color:var(--text-muted);font-size:13px;font-weight:500;">Pilih paket dan claim server bot gratis</p>
+    </div>
+
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <div style="display:flex;align-items:center;gap:12px;">
+          <div style="background:var(--orange);width:36px;height:36px;display:flex;align-items:center;justify-content:center;font-weight:900;color:#fff;font-size:16px;border:var(--border-thick);box-shadow:var(--shadow-light);" id="claimInitial">?</div>
+          <div><div style="font-size:9px;font-weight:700;color:var(--text-muted);">LOGIN AS</div><div style="font-weight:900;font-size:14px;" id="claimName">...</div></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="font-weight:900;font-size:14px;"><i class="fas fa-coins"></i> <span id="claimCoinDisplay">0</span></span>
+          <button class="earn-btn" onclick="earnCoin()" style="font-size:9px;padding:3px 10px;"><i class="fas fa-plus"></i></button>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-title">🪙 PAKET POLAR COIN</div>
+    <div class="grid-2" id="packageGrid"></div>
+
+    <div class="section-title">⚙️ JENIS SCRIPT</div>
+    <div class="grid-2">
+      <div class="select-box active" onclick="selectScript(this)" data-script="phoenix_md">
+        <i class="fas fa-robot"></i><h4>Phoenix MD</h4><p>Pterodactyl Engine</p>
+      </div>
+      <div class="select-box" onclick="selectScript(this)" data-script="ourin_md">
+        <i class="fas fa-microchip"></i><h4>Ourin</h4><p>Native Core</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <div style="margin-bottom:10px;">
+        <label style="font-size:11px;font-weight:800;color:var(--text-muted);display:block;margin-bottom:4px;text-transform:uppercase;">📱 Nomor WhatsApp</label>
+        <input type="text" id="phoneInput" placeholder="628xxxxxxxxxx" style="width:100%;padding:12px;background:#f0f0f0;border:var(--border-thick);box-shadow:inset 2px 2px 0px 0px #111;color:#111;font-size:14px;font-weight:600;">
+      </div>
+    </div>
+
+    <button class="btn btn-orange" style="width:100%;margin-top:8px;padding:14px;font-size:14px;" id="claimBtn" onclick="createSessionWithCoin()">
+      <i class="fas fa-rocket"></i> CLAIM SERVER SEKARANG
+    </button>
+  </div>
+
+  <!-- STATUS -->
+  <div id="sec-status" class="section">
+    <div style="text-align:center;margin-bottom:16px;">
+      <div class="slot-badge" style="background:#111;color:#fff;">REAL-TIME MONITORING</div>
+      <h1 style="font-weight:900;font-size:clamp(26px,6vw,36px);text-transform:uppercase;">SERVER <span style="background:var(--orange);color:#fff;padding:0 12px;transform:skew(-6deg);display:inline-block;border:var(--border-thick);box-shadow:var(--shadow-light);">STATUS</span></h1>
+    </div>
+
+    <div class="card">
+      <div class="status-grid">
+        <div class="stat-box"><h3 class="text-orange" id="statTotal">-</h3><p>TOTAL</p></div>
+        <div class="stat-box"><h3 class="text-gold" id="statSlot">-</h3><p>SLOT</p></div>
+        <div class="stat-box"><h3 style="color:#111;" id="statOnline">-</h3><p>ONLINE</p></div>
+        <div class="stat-box"><h3 class="text-orange" id="statOffline">-</h3><p>OFFLINE</p></div>
+      </div>
+    </div>
+
+    <div class="card" style="box-shadow:var(--shadow-heavy);">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="background:var(--orange);padding:8px;border:var(--border-thick);box-shadow:var(--shadow-light);"><i class="fas fa-server" style="color:#fff;font-size:14px;"></i></div>
+          <div><h3 style="font-size:14px;font-weight:900;">PHOENIX MD</h3><div style="font-size:10px;font-weight:600;color:var(--text-muted);">Pterodactyl</div></div>
+        </div>
+        <div class="badge-status" id="phoenixBadge">...</div>
+      </div>
+      <div class="spec-row"><span style="font-weight:600;color:var(--text-muted);">RAM</span><span style="font-weight:900;" id="phoenixRam">-</span></div>
+      <div class="spec-row"><span style="font-weight:600;color:var(--text-muted);">PING</span><span style="font-weight:900;" id="phoenixPing">-</span></div>
+    </div>
+
+    <div class="card" style="box-shadow:var(--shadow-heavy);">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="background:#111;padding:8px;border:var(--border-thick);box-shadow:var(--shadow-light);"><i class="fas fa-microchip" style="color:#fff;font-size:14px;"></i></div>
+          <div><h3 style="font-size:14px;font-weight:900;">OURIN MD V3</h3><div style="font-size:10px;font-weight:600;color:var(--text-muted);">Pterodactyl</div></div>
+        </div>
+        <div class="badge-status" id="ourinBadge">...</div>
+      </div>
+      <div class="spec-row"><span style="font-weight:600;color:var(--text-muted);">RAM</span><span style="font-weight:900;" id="ourinRam">-</span></div>
+      <div class="spec-row"><span style="font-weight:600;color:var(--text-muted);">PING</span><span style="font-weight:900;" id="ourinPing">-</span></div>
+    </div>
+  </div>
+
+  <!-- SESSIONS -->
+  <div id="sec-sessions" class="section">
+    <div style="text-align:center;margin-bottom:16px;">
+      <div class="slot-badge"><span id="sessionCountLabel">0 / 10</span> SESSION</div>
+      <h1 style="font-weight:900;font-size:clamp(26px,6vw,36px);text-transform:uppercase;">MY <span style="background:var(--orange);color:#fff;padding:0 12px;transform:skew(-6deg);display:inline-block;border:var(--border-thick);box-shadow:var(--shadow-light);">BOTS</span></h1>
+    </div>
+    <div id="sessionsList"></div>
+  </div>
+
+  <!-- PROFILE -->
+  <div id="sec-profile" class="section">
+    <div style="text-align:center;margin-bottom:24px;margin-top:8px;">
+      <div style="position:relative;display:inline-block;">
+        <img id="profileAvatar" src="https://ui-avatars.com/api/?name=U" style="width:80px;height:80px;border:var(--border-thick);box-shadow:var(--shadow-light);">
+        <div style="position:absolute;top:-10px;right:-10px;background:var(--orange);color:#fff;padding:2px 14px;font-size:10px;font-weight:900;border:var(--border-thick);box-shadow:var(--shadow-light);transform:rotate(6deg);">✦ YOU!</div>
+      </div>
+      <h1 style="font-weight:900;font-size:26px;margin-top:12px;text-transform:uppercase;" id="profileName">...</h1>
+      <p style="color:var(--text-muted);font-size:13px;font-weight:500;" id="profileEmail">...</p>
+      <div style="background:#fff;border:var(--border-thick);box-shadow:var(--shadow-light);display:inline-flex;align-items:center;gap:12px;padding:6px 18px;margin-top:12px;">
+        <div style="font-weight:900;font-size:14px;"><i class="fas fa-coins"></i> <span id="profileCoinDisplay">0</span></div>
+        <div style="font-size:10px;font-weight:800;letter-spacing:1px;color:var(--text-muted);">POLAR COIN</div>
+        <button class="earn-btn" onclick="earnCoin()" style="font-size:9px;padding:3px 10px;"><i class="fas fa-plus"></i> EARN</button>
+      </div>
+      <div style="margin-top:12px;">
+        <a href="#" onclick="logout();return false;" style="color:#111;font-size:12px;font-weight:800;text-decoration:none;border:var(--border-thick);padding:4px 16px;box-shadow:var(--shadow-light);background:#fff;display:inline-block;">LOGOUT <i class="fas fa-arrow-right"></i></a>
+      </div>
+    </div>
+
+    <div class="card" style="text-align:center;padding:32px 16px;">
+      <div style="background:#f0f0f0;width:48px;height:48px;display:inline-flex;justify-content:center;align-items:center;font-size:24px;color:#111;border:var(--border-thick);box-shadow:var(--shadow-light);margin-bottom:12px;">
+        <i class="fas fa-chart-simple"></i>
+      </div>
+      <h2 style="font-weight:900;font-size:20px;margin-bottom:4px;text-transform:uppercase;">STATISTIK</h2>
+      <p style="color:var(--text-muted);font-size:13px;font-weight:500;">Total Session: <strong id="profileSessionCount">0</strong> / 10</p>
+      <p style="color:var(--text-muted);font-size:13px;font-weight:500;margin-top:4px;">Polar Coin: <strong class="text-gold" id="profileCoinStat">0</strong></p>
+      <button class="btn btn-orange" style="margin-top:16px;" onclick="navTo('claim')">CLAIM SERVER <i class="fas fa-arrow-right"></i></button>
+    </div>
+  </div>
+
+</div>
+
+<script src="dashboard.js"></script>
+</body>
+</html>

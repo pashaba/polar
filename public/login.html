@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Polar.web.id — Login</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div id="splash">
+  <div class="splash-container">
+    <div class="splash-name">Polar.web.id</div>
+    <div class="splash-spinner"></div>
+    <div class="splash-sub">Memuat...</div>
+  </div>
+</div>
+
+<div class="auth-wrap">
+
+  <!-- ===== LOGIN CARD ===== -->
+  <div class="auth-card" id="loginCard">
+    <div class="auth-avatar"><i class="fas fa-user"></i></div>
+    <h2>LOGIN</h2>
+    <p class="sub">Masuk ke akun Polar.web.id kamu</p>
+
+    <div class="auth-error" id="loginError"></div>
+
+    <form id="loginForm">
+      <div class="auth-field">
+        <label>Email</label>
+        <input type="email" id="loginEmail" placeholder="email@gmail.com" required>
+      </div>
+      <div class="auth-field">
+        <label>Password</label>
+        <input type="password" id="loginPassword" placeholder="••••••••" required>
+      </div>
+      <button type="submit" class="btn btn-orange btn-full" id="loginBtn">
+        <i class="fas fa-right-to-bracket"></i> LOGIN
+      </button>
+    </form>
+
+    <div class="auth-divider">ATAU</div>
+
+    <a href="/api/auth/google" class="google-btn-login">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <div class="g-icon"><img src="https://upload.wikimedia.org/wikipedia/commons/5/53/Google_%22G%22_Logo.svg" alt="Google"></div>
+        <div>
+          <div style="font-size:14px;font-weight:900;">Login dengan Google</div>
+          <div style="font-size:11px;font-weight:500;color:var(--text-muted);">Aman & cepat</div>
+        </div>
+      </div>
+      <i class="fas fa-chevron-right" style="color:#111;"></i>
+    </a>
+
+    <div class="auth-switch">Belum punya akun? <a href="#" onclick="showRegister();return false;">Daftar di sini</a></div>
+  </div>
+
+  <!-- ===== REGISTER CARD ===== -->
+  <div class="auth-card" id="registerCard" style="display:none;">
+    <div class="auth-avatar"><i class="fas fa-user-plus"></i></div>
+    <h2>DAFTAR</h2>
+    <p class="sub">Buat akun Polar.web.id baru pakai email</p>
+
+    <div class="auth-error" id="registerError"></div>
+
+    <form id="registerForm">
+      <div class="auth-field">
+        <label>Nama</label>
+        <input type="text" id="regName" placeholder="Nama kamu" required>
+      </div>
+      <div class="auth-field">
+        <label>Email</label>
+        <input type="email" id="regEmail" placeholder="email@gmail.com" required>
+      </div>
+      <div class="auth-field">
+        <label>Password</label>
+        <input type="password" id="regPassword" placeholder="Minimal 6 karakter" minlength="6" required>
+      </div>
+      <button type="submit" class="btn btn-orange btn-full" id="registerBtn">
+        <i class="fas fa-user-plus"></i> DAFTAR
+      </button>
+    </form>
+
+    <div class="auth-divider">ATAU</div>
+
+    <a href="/api/auth/google" class="google-btn-login">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <div class="g-icon"><img src="https://upload.wikimedia.org/wikipedia/commons/5/53/Google_%22G%22_Logo.svg" alt="Google"></div>
+        <div>
+          <div style="font-size:14px;font-weight:900;">Daftar dengan Google</div>
+          <div style="font-size:11px;font-weight:500;color:var(--text-muted);">Aman & cepat</div>
+        </div>
+      </div>
+      <i class="fas fa-chevron-right" style="color:#111;"></i>
+    </a>
+
+    <div class="auth-switch">Sudah punya akun? <a href="#" onclick="showLogin();return false;">Login di sini</a></div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+window.addEventListener('load', () => {
+  setTimeout(() => document.getElementById('splash').classList.add('hide'), 800);
+});
+
+function showToast(msg, type = 'info') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast ' + type;
+  t.style.display = 'block';
+  clearTimeout(t._timeout);
+  t._timeout = setTimeout(() => { t.style.display = 'none'; }, 4000);
+}
+
+function showRegister() {
+  document.getElementById('loginCard').style.display = 'none';
+  document.getElementById('registerCard').style.display = 'block';
+}
+function showLogin() {
+  document.getElementById('registerCard').style.display = 'none';
+  document.getElementById('loginCard').style.display = 'block';
+}
+
+function showError(id, msg) {
+  const el = document.getElementById(id);
+  el.textContent = msg;
+  el.classList.add('show');
+}
+function hideError(id) {
+  document.getElementById(id).classList.remove('show');
+}
+
+// Cek query string buat error dari Google OAuth callback
+(function checkGoogleError() {
+  const params = new URLSearchParams(window.location.search);
+  const error = params.get('error');
+  if (error) {
+    const messages = {
+      no_code: 'Login Google dibatalkan atau gagal.',
+      google_failed: 'Gagal terhubung ke Google. Coba lagi.',
+      server_error: 'Terjadi kesalahan server. Coba lagi.'
+    };
+    showToast('❌ ' + (messages[error] || 'Login Google gagal.'), 'error');
+    history.replaceState(null, '', window.location.pathname);
+  }
+})();
+
+// ===== LOGIN =====
+document.getElementById('loginForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  hideError('loginError');
+  const btn = document.getElementById('loginBtn');
+  const email = document.getElementById('loginEmail').value.trim();
+  const password = document.getElementById('loginPassword').value;
+
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-pulse"></i> Memproses...';
+
+  try {
+    const res = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ email, password })
+    });
+    const data = await res.json();
+    if (!data.success) {
+      showError('loginError', data.message || 'Login gagal');
+      return;
+    }
+    showToast('✅ Login berhasil!', 'success');
+    setTimeout(() => window.location.href = '/dashboard', 600);
+  } catch (err) {
+    showError('loginError', 'Koneksi gagal, coba lagi.');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-right-to-bracket"></i> LOGIN';
+  }
+});
+
+// ===== REGISTER =====
+document.getElementById('registerForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  hideError('registerError');
+  const btn = document.getElementById('registerBtn');
+  const name = document.getElementById('regName').value.trim();
+  const email = document.getElementById('regEmail').value.trim();
+  const password = document.getElementById('regPassword').value;
+
+  if (password.length < 6) {
+    showError('registerError', 'Password minimal 6 karakter');
+    return;
+  }
+
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-pulse"></i> Memproses...';
+
+  try {
+    const res = await fetch('/api/auth/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ name, email, password })
+    });
+    const data = await res.json();
+    if (!data.success) {
+      showError('registerError', data.message || 'Daftar gagal');
+      return;
+    }
+    showToast('✅ Akun berhasil dibuat!', 'success');
+    setTimeout(() => window.location.href = '/dashboard', 600);
+  } catch (err) {
+    showError('registerError', 'Koneksi gagal, coba lagi.');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-user-plus"></i> DAFTAR';
+  }
+});
+</script>
+</body>
+</html>
