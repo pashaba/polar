@@ -17,14 +17,27 @@ const PACKAGES = [
 // ============================================================
 // INIT
 // ============================================================
-window.addEventListener('load', () => {
-  setTimeout(() => document.getElementById('splash').classList.add('hide'), 1000);
-});
+function setSplashProgress(pct, label) {
+  const bar = document.getElementById('splashProgressBar');
+  const sub = document.getElementById('splashSub');
+  if (bar) bar.style.width = pct + '%';
+  if (sub && label) sub.textContent = label;
+}
+
+function hideSplash() {
+  setTimeout(() => document.getElementById('splash')?.classList.add('hide'), 250);
+}
 
 document.addEventListener('DOMContentLoaded', async () => {
+  setSplashProgress(15, 'Menghubungkan ke akun...');
   await loadMe();
+  setSplashProgress(55, 'Memuat data bot...');
   renderPackages();
   await Promise.all([loadSessions(), loadServerStatus()]);
+  setSplashProgress(90, 'Menyiapkan dashboard...');
+  loadCoinHistory();
+  setSplashProgress(100, 'Selesai!');
+  hideSplash();
   checkEarnCoinReturn();
   setInterval(loadMe, 30000);
 });
@@ -87,6 +100,29 @@ function toggleMenu() {
   document.getElementById('sidebar').classList.toggle('active');
   document.getElementById('sidebarOverlay').classList.toggle('active');
 }
+
+// ============================================================
+// DARK MODE
+// ============================================================
+function applyThemeIcon() {
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const icon = document.getElementById('themeIcon');
+  if (icon) icon.className = isDark ? 'fas fa-sun' : 'fas fa-moon';
+}
+
+function toggleTheme() {
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  if (isDark) {
+    document.documentElement.removeAttribute('data-theme');
+    localStorage.setItem('polar_theme', 'light');
+  } else {
+    document.documentElement.setAttribute('data-theme', 'dark');
+    localStorage.setItem('polar_theme', 'dark');
+  }
+  applyThemeIcon();
+}
+
+applyThemeIcon();
 
 function navTo(sectionId) {
   document.querySelectorAll('.section').forEach(sec => sec.classList.remove('active'));
@@ -152,6 +188,7 @@ function checkEarnCoinReturn() {
     const coins = params.get('coins');
     showToast(`🎉 +1 Polar Coin berhasil diklaim! Total: ${coins} 🪙`, 'gold');
     if (currentUser) { currentUser.coins = Number(coins); renderUser(); renderPackages(); }
+    loadCoinHistory();
   } else if (earn === 'pending') {
     showToast('⏳ Selesaikan dulu earn coin yang sedang berjalan!', 'error');
   } else if (earn === 'expired') {
@@ -255,6 +292,7 @@ async function createSessionWithCoin() {
     hideLoading();
     showToast(`✅ Server berhasil di-claim! ${selectedDays} hari aktif. 🎉`, 'success');
     await loadSessions();
+    loadCoinHistory();
     showPairingModal(phone);
   } catch (e) {
     hideLoading();
@@ -328,6 +366,68 @@ document.addEventListener('DOMContentLoaded', () => {
     if (e.target === this) closePairingModal();
   });
 });
+
+// ============================================================
+// COIN HISTORY
+// ============================================================
+const REASON_LABELS = {
+  earn: '🪙 Earn Coin (Shortlink)',
+  claim_session: '🤖 Claim Server',
+  manual_adjust: '⚙️ Penyesuaian Manual'
+};
+
+function formatHistoryReason(reason) {
+  if (reason.startsWith('claim_session:')) {
+    const script = reason.split(':')[1];
+    return `🤖 Claim Server (${script})`;
+  }
+  return REASON_LABELS[reason] || reason;
+}
+
+function formatHistoryDate(ts) {
+  const d = new Date(Number(ts));
+  return d.toLocaleString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
+
+async function loadCoinHistory() {
+  try {
+    const res = await fetch('/api/coins/history', { credentials: 'include' });
+    const data = await res.json();
+    if (!data.success) return;
+    renderHistory(data.logs);
+  } catch (e) {
+    console.error(e);
+  }
+}
+
+function renderHistory(logs) {
+  const list = document.getElementById('historyList');
+  if (!list) return;
+
+  if (!logs || logs.length === 0) {
+    list.innerHTML = `
+      <div style="text-align:center;padding:24px 0;">
+        <div style="font-size:36px;margin-bottom:8px;opacity:.3;">🪙</div>
+        <p style="color:var(--text-muted);font-size:13px;font-weight:600;">Belum ada riwayat transaksi</p>
+      </div>`;
+    return;
+  }
+
+  list.innerHTML = logs.map(log => {
+    const isPlus = log.amount > 0;
+    return `
+      <div class="history-item">
+        <div class="history-left">
+          <div class="history-icon ${isPlus ? 'plus' : 'minus'}"><i class="fas ${isPlus ? 'fa-plus' : 'fa-minus'}"></i></div>
+          <div>
+            <div class="history-reason">${formatHistoryReason(log.reason)}</div>
+            <div class="history-date">${formatHistoryDate(log.created_at)}</div>
+          </div>
+        </div>
+        <div class="history-amount ${isPlus ? 'plus' : 'minus'}">${isPlus ? '+' : ''}${log.amount} 🪙</div>
+      </div>`;
+  }).join('');
+}
 
 // ============================================================
 // SERVER STATUS
