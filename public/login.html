@@ -3,18 +3,43 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#ff5e00">
+<link rel="manifest" href="/manifest.json">
+<link rel="icon" href="/icons/icon-192.png">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
 <title>Polar.web.id — Login</title>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <link rel="stylesheet" href="style.css">
+<script>
+  (function() {
+    const saved = localStorage.getItem('polar_theme');
+    const theme = saved || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    if (theme === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+  })();
+</script>
 </head>
 <body>
 
 <div id="splash">
   <div class="splash-container">
+    <div class="splash-logo">
+      <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="100" cy="100" r="88" fill="none" stroke="url(#ringGrad)" stroke-width="4" stroke-dasharray="10 15"/>
+        <polygon points="100,30 112,68 153,68 120,92 132,130 100,106 68,130 80,92 47,68 88,68" fill="url(#starGrad)" stroke="white" stroke-width="2"/>
+        <defs>
+          <linearGradient id="ringGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#ff5e00"/><stop offset="50%" stop-color="#00e5ff"/><stop offset="100%" stop-color="#7c3aed"/>
+          </linearGradient>
+          <linearGradient id="starGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#fbbf24"/><stop offset="100%" stop-color="#f59e0b"/>
+          </linearGradient>
+        </defs>
+      </svg>
+    </div>
     <div class="splash-name">Polar.web.id</div>
-    <div class="splash-spinner"></div>
-    <div class="splash-sub">Memuat...</div>
+    <div class="splash-progress"><div class="splash-progress-bar" style="width:100%;"></div></div>
+    <div class="splash-sub">Menyiapkan halaman...</div>
   </div>
 </div>
 
@@ -106,7 +131,10 @@
 
 <script>
 window.addEventListener('load', () => {
-  setTimeout(() => document.getElementById('splash').classList.add('hide'), 800);
+  setTimeout(() => document.getElementById('splash').classList.add('hide'), 500);
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js').catch(() => {});
+  }
 });
 
 function showToast(msg, type = 'info') {
