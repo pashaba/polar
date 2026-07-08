@@ -22,14 +22,26 @@ Project ini hasil migrasi dari PHP (procedural, session-based) ke Node.js/Expres
 ```
 server.js              -> semua backend logic & route API
 vercel.json             -> config Vercel (includeFiles: public/** wajib ada, soalnya express.static pakai dynamic fs)
-schema.sql               -> ALTER statements buat Supabase (jalanin manual di SQL editor, gak ada migration tool)
+schema.sql               -> ALTER statements + CREATE TABLE buat Supabase (jalanin manual di SQL editor, gak ada migration tool)
 .env.example              -> daftar env var yang wajib diisi di Vercel dashboard (bukan file .env di production)
 public/
-  login.html               -> login + register (2 card di 1 file, toggle via JS)
-  dashboard.html            -> dashboard utama, semua section (home/claim/status/sessions/profile) ada di 1 file, di-toggle via class .active
-  dashboard.js              -> semua logic dashboard: fetch /api/me, /api/sessions, /api/server-status, dll
-  style.css                 -> shared CSS neobrutalism
+  login.html               -> login + register (2 card di 1 file, toggle via JS), + PWA meta tags, + anti-flash dark mode script
+  dashboard.html            -> dashboard utama, semua section (home/claim/status/sessions/history/profile) ada di 1 file, di-toggle via class .active
+  dashboard.js              -> semua logic dashboard: fetch /api/me, /api/sessions, /api/server-status, /api/coins/history, dark mode toggle, splash progress
+  style.css                 -> shared CSS neobrutalism + dark mode variables ([data-theme="dark"])
+  manifest.json              -> config PWA (nama, icon, theme color, start_url: /dashboard)
+  sw.js                      -> service worker (cache-first buat static asset, network-first buat halaman, API selalu network-only)
+  icons/                     -> icon PWA (192, 512, apple-touch) — placeholder bintang gold, ganti kalau ada logo asli
 ```
+
+## Fitur Tambahan (di luar auth/dashboard dasar)
+
+- **Riwayat transaksi koin**: setiap perubahan `coins` di `polar_users` (earn, claim session, manual adjust) dicatat ke tabel `polar_coin_logs` lewat helper `logCoinTransaction()` di server.js. Endpoint: `GET /api/coins/history`. **Kalau nambah cara baru buat ubah koin, WAJIB panggil `logCoinTransaction()` juga**, biar riwayatnya konsisten.
+- **PWA**: `manifest.json` + `sw.js` bikin web bisa di-install ke homescreen. Service worker sengaja **skip caching buat semua path `/api/*`** — jangan diubah jadi ke-cache, karena data user (coins, sessions) harus selalu fresh.
+- **Dark mode**: pakai atribut `data-theme="dark"` di `<html>`, disimpen di `localStorage` key `polar_theme`. Ada inline script di `<head>` tiap halaman (`dashboard.html`, `login.html`, `privacy.html`) yang set atribut ini **sebelum** body render, biar gak ada flash putih. Kalau nambah halaman baru, script anti-flash ini harus ikut disalin.
+- **Splash progress**: progress bar splash screen di dashboard **ngikutin progres loading asli** (`setSplashProgress()` dipanggil manual di titik-titik fetch penting di `dashboard.js`), bukan animasi CSS timer. Kalau nambah fetch penting baru di init flow, sesuaikan juga persentasenya.
+- **Cloudflare Turnstile (captcha)**: dipasang di form login & register. Karena `login.html` butuh inject `TURNSTILE_SITE_KEY` (public, aman ditaruh di HTML) yang nilainya dari env var, route `GET /login` di server.js **bukan** `sendFile` biasa — dia baca file, `.replace()` placeholder `{{TURNSTILE_SITE_KEY}}`, baru dikirim. Kalau ubah `login.html`, jangan hapus placeholder ini. Verifikasi token captcha di server pakai `verifyTurnstile()` — kalau `TURNSTILE_SECRET_KEY` belum di-set di env, verifikasi **di-skip otomatis** (biar gak ke-lock pas development).
+- **Customer Service & Privacy Policy**: nomor WA CS (`6285715294026`) di-hardcode langsung di HTML (`dashboard.html`, `login.html`, `privacy.html`) karena itu info publik, bukan secret — sengaja gak ditaruh di env var biar gak perlu templating tambahan di semua halaman. Halaman kebijakan privasi ada di `public/privacy.html`, diakses lewat `/privacy` (clean URL, sama pola kayak `/login` & `/dashboard`).
 
 ## Konvensi Penting
 
@@ -55,12 +67,14 @@ Kolom penting di `polar_users`: `id, email (unique), name, avatar, coins, passwo
 
 `polar_sessions` sekarang direlasikan via `user_id` (bukan `fingerprint` kayak versi PHP lama).
 
+`polar_coin_logs` (tabel baru): `id, user_id, amount (+/-), reason, balance_after, created_at` — log tiap perubahan koin, dibuat otomatis lewat `logCoinTransaction()`, jangan di-insert manual dari tempat lain.
+
 ## API Routes (di server.js)
 
 | Route | Method | Auth? | Fungsi |
 |---|---|---|---|
-| `/api/auth/register` | POST | - | Daftar email+password |
-| `/api/auth/login` | POST | - | Login email+password |
+| `/api/auth/register` | POST | - | Daftar email+password (+ verifikasi captcha) |
+| `/api/auth/login` | POST | - | Login email+password (+ verifikasi captcha) |
 | `/api/auth/google` | GET | - | Redirect ke Google OAuth |
 | `/api/auth/google/callback` | GET | - | Terima balikan Google, upsert user, set cookie |
 | `/api/auth/logout` | POST | ✓ | Clear cookie |
@@ -68,6 +82,7 @@ Kolom penting di `polar_users`: `id, email (unique), name, avatar, coins, passwo
 | `/api/coins/update` | POST | ✓ | Update coin manual |
 | `/api/sessions` | GET/POST | ✓ | List / claim server bot |
 | `/api/sessions/:id` | DELETE | ✓ | Hapus session |
+| `/api/coins/history` | GET | ✓ | Ambil 50 riwayat transaksi koin terakhir |
 | `/api/server-status` | GET | - | Cek status Phoenix & Ourin via Pterodactyl API |
 | `/api/earn/start` | GET | ✓ | Set `earn_flag`, redirect ke Safelinku |
 | `/api/earn/callback` | GET | ✓ | Destination Safelinku, tambah +1 coin |
