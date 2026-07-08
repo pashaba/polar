@@ -5,6 +5,7 @@ const cookieParser = require('cookie-parser');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const path = require('path');
+const fs = require('fs');
 
 const app = express();
 app.use(express.json());
@@ -17,7 +18,17 @@ app.use(express.static(path.join(__dirname, 'public'), { index: false, extension
 // ============================================================
 app.get('/', (req, res) => res.redirect('/dashboard'));
 app.get('/dashboard', (req, res) => res.sendFile(path.join(__dirname, 'public', 'dashboard.html')));
-app.get('/login', (req, res) => res.sendFile(path.join(__dirname, 'public', 'login.html')));
+
+// /login pakai templating manual buat inject TURNSTILE_SITE_KEY (site key aman ditaruh di HTML, cuma secret key yang rahasia)
+app.get('/login', (req, res) => {
+  let html = fs.readFileSync(path.join(__dirname, 'public', 'login.html'), 'utf8');
+  html = html.replace(/{{TURNSTILE_SITE_KEY}}/g, process.env.TURNSTILE_SITE_KEY || '');
+  res.send(html);
+});
+
+app.get('/privacy', (req, res) => res.sendFile(path.join(__dirname, 'public', 'privacy.html')));
+
+app.get('/privacy.html', (req, res) => res.redirect(301, '/privacy'));
 
 // Redirect permanen kalau ada yang masih akses .html langsung
 app.get('/dashboard.html', (req, res) => res.redirect(301, '/dashboard'));
@@ -96,6 +107,36 @@ async function logCoinTransaction(userId, amount, reason, balanceAfter) {
 }
 
 // ============================================================
+// CLOUDFLARE TURNSTILE (captcha)
+// ============================================================
+async function verifyTurnstile(token, ip) {
+  // Kalau secret key belum di-setup di env, jangan block login/register (biar gak ke-lock pas dev/testing)
+  if (!process.env.TURNSTILE_SECRET_KEY) return true;
+  if (!token) return false;
+
+  try {
+    const r = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        secret: process.env.TURNSTILE_SECRET_KEY,
+        response: token,
+        remoteip: ip || ''
+      })
+    });
+    const data = await r.json();
+    return data.success === true;
+  } catch (e) {
+    console.error('Turnstile verify error:', e.message);
+    return false;
+  }
+}
+
+function getClientIp(req) {
+  return (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket?.remoteAddress || '';
+}
+
+// ============================================================
 // AUTH HELPERS (JWT via httpOnly cookie)
 // ============================================================
 function signToken(user) {
@@ -127,7 +168,13 @@ function authMiddleware(req, res, next) {
 // ============================================================
 app.post('/api/auth/register', async (req, res) => {
   try {
-    const { email, password, name } = req.body;
+    const { email, password, name, captchaToken } = req.body;
+
+    const captchaOk = await verifyTurnstile(captchaToken, getClientIp(req));
+    if (!captchaOk) {
+      return res.status(400).json({ success: false, message: 'Verifikasi captcha gagal, coba lagi.' });
+    }
+
     if (!email || !password) {
       return res.status(400).json({ success: false, message: 'Email dan password wajib diisi' });
     }
@@ -167,7 +214,13 @@ app.post('/api/auth/register', async (req, res) => {
 // ============================================================
 app.post('/api/auth/login', async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, password, captchaToken } = req.body;
+
+    const captchaOk = await verifyTurnstile(captchaToken, getClientIp(req));
+    if (!captchaOk) {
+      return res.status(400).json({ success: false, message: 'Verifikasi captcha gagal, coba lagi.' });
+    }
+
     if (!email || !password) {
       return res.status(400).json({ success: false, message: 'Email dan password wajib diisi' });
     }
