@@ -3,18 +3,45 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+<meta name="theme-color" content="#ff5e00">
+<meta name="description" content="Claim server bot WhatsApp gratis pakai Polar Coin">
+<link rel="manifest" href="/manifest.json">
+<link rel="icon" href="/icons/icon-192.png">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
 <title>Polar.web.id — Bot WhatsApp Gratis 🪙</title>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <link rel="stylesheet" href="style.css">
+<script>
+  // Set tema sebelum body render, biar ga "kedip" putih dulu baru gelap
+  (function() {
+    const saved = localStorage.getItem('polar_theme');
+    const theme = saved || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    if (theme === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+  })();
+</script>
 </head>
 <body id="body" class="locked-bg">
 
 <div id="splash">
   <div class="splash-container">
+    <div class="splash-logo">
+      <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="100" cy="100" r="88" fill="none" stroke="url(#ringGrad)" stroke-width="4" stroke-dasharray="10 15"/>
+        <polygon points="100,30 112,68 153,68 120,92 132,130 100,106 68,130 80,92 47,68 88,68" fill="url(#starGrad)" stroke="white" stroke-width="2"/>
+        <defs>
+          <linearGradient id="ringGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#ff5e00"/><stop offset="50%" stop-color="#00e5ff"/><stop offset="100%" stop-color="#7c3aed"/>
+          </linearGradient>
+          <linearGradient id="starGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#fbbf24"/><stop offset="100%" stop-color="#f59e0b"/>
+          </linearGradient>
+        </defs>
+      </svg>
+    </div>
     <div class="splash-name">Polar.web.id</div>
-    <div class="splash-spinner"></div>
-    <div class="splash-sub">Memuat dashboard...</div>
+    <div class="splash-progress"><div class="splash-progress-bar" id="splashProgressBar"></div></div>
+    <div class="splash-sub" id="splashSub">Menghubungkan...</div>
   </div>
 </div>
 
@@ -50,6 +77,7 @@
   <div class="nav-brand"><span class="brand-icon">✦</span> POLAR.WEB.ID</div>
   <div class="nav-right">
     <div class="coin-badge"><i class="fas fa-coins"></i> <span id="coinCount">0</span></div>
+    <button class="theme-toggle-btn" id="themeToggleBtn" onclick="toggleTheme()"><i class="fas fa-moon" id="themeIcon"></i></button>
     <div class="profile-btn" onclick="navTo('profile')">
       <img id="navAvatar" src="https://ui-avatars.com/api/?name=U" alt="Avatar">
       <span class="hide-mobile" id="navName">...</span>
@@ -68,6 +96,7 @@
   <a href="#" class="nav-link" onclick="navTo('status'); toggleMenu();"><i class="fas fa-server"></i> STATUS</a>
   <a href="#" class="nav-link" onclick="navTo('claim'); toggleMenu();"><i class="fas fa-download"></i> CLAIM</a>
   <a href="#" class="nav-link" onclick="navTo('sessions'); toggleMenu();"><i class="fas fa-robot"></i> SESSIONS</a>
+  <a href="#" class="nav-link" onclick="navTo('history'); toggleMenu();"><i class="fas fa-clock-rotate-left"></i> RIWAYAT KOIN</a>
   <a href="#" class="nav-link" onclick="navTo('profile'); toggleMenu();"><i class="fas fa-user"></i> PROFILE</a>
   <a href="#" class="nav-link" onclick="earnCoin()" style="background:var(--gold);"><i class="fas fa-coins" style="color:#111;"></i> EARN POLAR COIN</a>
   <a href="#" class="nav-link" onclick="logout()" style="background:var(--red);color:#fff;margin-top:auto;"><i class="fas fa-sign-out-alt"></i> LOGOUT</a>
@@ -184,6 +213,16 @@
     <div id="sessionsList"></div>
   </div>
 
+  <!-- HISTORY -->
+  <div id="sec-history" class="section">
+    <div style="text-align:center;margin-bottom:16px;">
+      <div class="slot-badge" style="background:var(--gold);color:#111;"><i class="fas fa-coins"></i> LOG TRANSAKSI</div>
+      <h1 style="font-weight:900;font-size:clamp(26px,6vw,36px);text-transform:uppercase;">RIWAYAT <span style="background:var(--orange);color:#fff;padding:0 12px;transform:skew(-6deg);display:inline-block;border:var(--border-thick);box-shadow:var(--shadow-light);">KOIN</span></h1>
+      <p style="color:var(--text-muted);font-size:13px;font-weight:500;">50 transaksi terakhir</p>
+    </div>
+    <div class="card" id="historyCard"><div id="historyList"></div></div>
+  </div>
+
   <!-- PROFILE -->
   <div id="sec-profile" class="section">
     <div style="text-align:center;margin-bottom:24px;margin-top:8px;">
@@ -217,5 +256,12 @@
 </div>
 
 <script src="dashboard.js"></script>
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js').catch(() => {});
+    });
+  }
+</script>
 </body>
 </html>
