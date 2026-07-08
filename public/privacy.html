@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#ff5e00">
+<link rel="manifest" href="/manifest.json">
+<link rel="icon" href="/icons/icon-192.png">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<title>Polar.web.id — Kebijakan Privasi</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="stylesheet" href="style.css">
+<script>
+  (function() {
+    const saved = localStorage.getItem('polar_theme');
+    const theme = saved || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    if (theme === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+  })();
+</script>
+<style>
+  .policy-wrap { max-width: 720px; margin: 0 auto; padding: 24px 16px 60px; }
+  .policy-wrap h1 { font-size: clamp(26px,6vw,34px); font-weight: 900; text-transform: uppercase; margin-bottom: 6px; }
+  .policy-wrap .updated { color: var(--text-muted); font-size: 12px; font-weight: 600; margin-bottom: 24px; }
+  .policy-section { margin-bottom: 20px; }
+  .policy-section h2 { font-size: 15px; font-weight: 900; text-transform: uppercase; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+  .policy-section h2 i { color: var(--orange); }
+  .policy-section p, .policy-section li { font-size: 13px; font-weight: 500; line-height: 1.7; color: var(--text-muted); }
+  .policy-section ul { padding-left: 20px; margin-top: 6px; }
+  .back-link { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 800; text-decoration: none; color: #111; margin-bottom: 20px; border: var(--border-thick); box-shadow: var(--shadow-light); padding: 6px 14px; background: #fff; }
+</style>
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="nav-brand"><span class="brand-icon">✦</span> POLAR.WEB.ID</div>
+  <button class="theme-toggle-btn" onclick="toggleTheme()"><i class="fas fa-moon" id="themeIcon"></i></button>
+</nav>
+
+<div class="policy-wrap">
+  <a href="/dashboard" class="back-link"><i class="fas fa-arrow-left"></i> Kembali ke Dashboard</a>
+
+  <h1>Kebijakan Privasi</h1>
+  <div class="updated">Terakhir diperbarui: Juli 2026</div>
+
+  <div class="policy-section">
+    <h2><i class="fas fa-database"></i> Data yang Kami Kumpulkan</h2>
+    <ul>
+      <li>Nama, email, dan foto profil (dari akun Google kalau login pakai Google, atau yang kamu isi sendiri kalau daftar pakai email & password)</li>
+      <li>Password kamu disimpan dalam bentuk terenkripsi (hash), kami sendiri gak bisa lihat password asli kamu</li>
+      <li>Nomor WhatsApp yang kamu daftarkan buat claim server bot</li>
+      <li>Data sesi bot (status online/offline, script yang dipakai, tanggal aktif)</li>
+      <li>Riwayat transaksi Polar Coin (earn, claim, dll)</li>
+    </ul>
+  </div>
+
+  <div class="policy-section">
+    <h2><i class="fas fa-gears"></i> Penggunaan Data</h2>
+    <p>Data yang kami kumpulkan cuma dipakai buat: menjalankan layanan bot WhatsApp yang kamu claim, autentikasi login, dan menampilkan riwayat aktivitas kamu di dashboard. Kami gak menjual atau membagikan data pribadi kamu ke pihak ketiga manapun buat tujuan komersial.</p>
+  </div>
+
+  <div class="policy-section">
+    <h2><i class="fas fa-cookie-bite"></i> Cookie & Sesi</h2>
+    <p>Kami pakai satu cookie (<code>polar_token</code>) buat menjaga status login kamu. Cookie ini bersifat httpOnly (gak bisa diakses lewat JavaScript pihak ketiga) dan otomatis expired setelah 7 hari.</p>
+  </div>
+
+  <div class="policy-section">
+    <h2><i class="fas fa-shield-halved"></i> Keamanan</h2>
+    <p>Password di-hash pakai bcrypt sebelum disimpan. Form login & register dilindungi Cloudflare Turnstile buat mencegah bot/spam. Meskipun begitu, gak ada sistem yang 100% aman — pakai password yang unik dan jangan bagikan akun kamu ke orang lain.</p>
+  </div>
+
+  <div class="policy-section">
+    <h2><i class="fas fa-user-shield"></i> Hak Kamu</h2>
+    <p>Kamu berhak minta data kamu dihapus sepenuhnya dari sistem kami kapan aja. Karena belum ada fitur hapus akun otomatis, silakan hubungi Customer Service kami buat proses ini.</p>
+  </div>
+
+  <div class="policy-section">
+    <h2><i class="fas fa-headset"></i> Kontak</h2>
+    <p>Ada pertanyaan soal privasi atau data kamu? Hubungi kami lewat WhatsApp:</p>
+    <a href="https://wa.me/6285715294026" target="_blank" class="btn btn-orange" style="margin-top:8px;"><i class="fab fa-whatsapp"></i> Chat Customer Service</a>
+  </div>
+</div>
+
+<script>
+  function toggleTheme() {
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    if (isDark) { document.documentElement.removeAttribute('data-theme'); localStorage.setItem('polar_theme','light'); }
+    else { document.documentElement.setAttribute('data-theme','dark'); localStorage.setItem('polar_theme','dark'); }
+    document.getElementById('themeIcon').className = isDark ? 'fas fa-moon' : 'fas fa-sun';
+  }
+  document.getElementById('themeIcon').className = document.documentElement.getAttribute('data-theme') === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
+</script>
+</body>
+</html>
