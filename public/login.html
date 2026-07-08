@@ -11,6 +11,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <link rel="stylesheet" href="style.css">
+<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
 <script>
   (function() {
     const saved = localStorage.getItem('polar_theme');
@@ -43,6 +44,8 @@
   </div>
 </div>
 
+<button class="theme-toggle-btn" id="themeToggleBtn" onclick="toggleTheme()" style="position:fixed;top:16px;right:16px;z-index:50;"><i class="fas fa-moon" id="themeIcon"></i></button>
+
 <div class="auth-wrap">
 
   <!-- ===== LOGIN CARD ===== -->
@@ -62,6 +65,7 @@
         <label>Password</label>
         <input type="password" id="loginPassword" placeholder="••••••••" required>
       </div>
+      <div class="cf-turnstile" id="turnstileLogin" data-sitekey="{{TURNSTILE_SITE_KEY}}" data-theme="auto" style="margin-bottom:14px;"></div>
       <button type="submit" class="btn btn-orange btn-full" id="loginBtn">
         <i class="fas fa-right-to-bracket"></i> LOGIN
       </button>
@@ -104,6 +108,7 @@
         <label>Password</label>
         <input type="password" id="regPassword" placeholder="Minimal 6 karakter" minlength="6" required>
       </div>
+      <div class="cf-turnstile" id="turnstileRegister" data-sitekey="{{TURNSTILE_SITE_KEY}}" data-theme="auto" style="margin-bottom:14px;"></div>
       <button type="submit" class="btn btn-orange btn-full" id="registerBtn">
         <i class="fas fa-user-plus"></i> DAFTAR
       </button>
@@ -127,6 +132,13 @@
 
 </div>
 
+<div style="text-align:center;padding:0 20px 24px;display:flex;flex-direction:column;gap:8px;align-items:center;">
+  <a href="https://wa.me/6285715294026" target="_blank" style="display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:800;color:#111;text-decoration:none;border:var(--border-thick);box-shadow:var(--shadow-light);padding:6px 16px;background:#fff;">
+    <i class="fab fa-whatsapp" style="color:var(--green);"></i> Customer Service
+  </a>
+  <a href="/privacy" style="font-size:11px;font-weight:600;color:var(--text-muted);text-decoration:underline;">Kebijakan Privasi</a>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -136,6 +148,14 @@ window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js').catch(() => {});
   }
 });
+
+function toggleTheme() {
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  if (isDark) { document.documentElement.removeAttribute('data-theme'); localStorage.setItem('polar_theme', 'light'); }
+  else { document.documentElement.setAttribute('data-theme', 'dark'); localStorage.setItem('polar_theme', 'dark'); }
+  document.getElementById('themeIcon').className = isDark ? 'fas fa-moon' : 'fas fa-sun';
+}
+document.getElementById('themeIcon').className = document.documentElement.getAttribute('data-theme') === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
 
 function showToast(msg, type = 'info') {
   const t = document.getElementById('toast');
@@ -186,6 +206,7 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
   const btn = document.getElementById('loginBtn');
   const email = document.getElementById('loginEmail').value.trim();
   const password = document.getElementById('loginPassword').value;
+  const captchaToken = document.querySelector('#turnstileLogin [name="cf-turnstile-response"]')?.value || '';
 
   btn.disabled = true;
   btn.innerHTML = '<i class="fas fa-spinner fa-pulse"></i> Memproses...';
@@ -195,11 +216,12 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
-      body: JSON.stringify({ email, password })
+      body: JSON.stringify({ email, password, captchaToken })
     });
     const data = await res.json();
     if (!data.success) {
       showError('loginError', data.message || 'Login gagal');
+      if (window.turnstile) turnstile.reset();
       return;
     }
     showToast('✅ Login berhasil!', 'success');
@@ -220,6 +242,7 @@ document.getElementById('registerForm').addEventListener('submit', async (e) => 
   const name = document.getElementById('regName').value.trim();
   const email = document.getElementById('regEmail').value.trim();
   const password = document.getElementById('regPassword').value;
+  const captchaToken = document.querySelector('#turnstileRegister [name="cf-turnstile-response"]')?.value || '';
 
   if (password.length < 6) {
     showError('registerError', 'Password minimal 6 karakter');
@@ -234,11 +257,12 @@ document.getElementById('registerForm').addEventListener('submit', async (e) => 
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
-      body: JSON.stringify({ name, email, password })
+      body: JSON.stringify({ name, email, password, captchaToken })
     });
     const data = await res.json();
     if (!data.success) {
       showError('registerError', data.message || 'Daftar gagal');
+      if (window.turnstile) turnstile.reset();
       return;
     }
     showToast('✅ Akun berhasil dibuat!', 'success');
