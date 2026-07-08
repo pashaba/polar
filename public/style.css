@@ -16,6 +16,52 @@
     --shadow-light: 4px 4px 0px 0px #333333;
     --border-thick: 3px solid #111111;
 }
+
+[data-theme="dark"] {
+    --bg-main: #121212;
+    --bg-card: #1c1c1c;
+    --bg-nav: #1c1c1c;
+    --white: #1c1c1c;
+    --text-main: #f2f2f2;
+    --text-muted: #b3b3b3;
+    --border: #f2f2f2;
+    --shadow-heavy: 6px 6px 0px 0px #f2f2f2;
+    --shadow-light: 4px 4px 0px 0px #b3b3b3;
+    --border-thick: 3px solid #f2f2f2;
+}
+[data-theme="dark"] body {
+    background-image: repeating-linear-gradient(45deg, rgba(255,255,255,0.02) 0px, rgba(255,255,255,0.02) 10px, transparent 10px, transparent 20px);
+}
+[data-theme="dark"] .auth-field input,
+[data-theme="dark"] #phoneInput {
+    background: #2a2a2a !important;
+    color: #f2f2f2 !important;
+    box-shadow: inset 2px 2px 0px 0px #000 !important;
+}
+[data-theme="dark"] .select-box:not(.active) i { color: #f2f2f2; }
+[data-theme="dark"] .btn-white,
+[data-theme="dark"] .btn-close-modal { background: #2a2a2a; color: #f2f2f2; }
+[data-theme="dark"] .g-icon { background: #f2f2f2; }
+[data-theme="dark"] .google-btn-login { color: #f2f2f2; }
+[data-theme="dark"] .pairing-code,
+[data-theme="dark"] .auth-error { background: #2a2a2a; }
+
+.theme-toggle-btn {
+    background: #fff;
+    border: var(--border-thick);
+    box-shadow: var(--shadow-light);
+    width: 36px;
+    height: 36px;
+    cursor: pointer;
+    transition: var(--transition);
+    color: #111;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.theme-toggle-btn:hover { transform: translate(2px,2px); box-shadow: 2px 2px 0px 0px #111; }
+[data-theme="dark"] .theme-toggle-btn { background: #2a2a2a; color: #f2f2f2; }
 * { margin:0; padding:0; box-sizing:border-box; font-family:'Space Grotesk', sans-serif; }
 body {
     background-color: var(--bg-main);
@@ -36,21 +82,55 @@ body {
 #splash {
     position:fixed; inset:0; z-index:9999; background:#0a0a0a;
     display:flex; flex-direction:column; align-items:center; justify-content:center; gap:30px;
-    transition:opacity .8s ease, visibility .8s ease; overflow:hidden;
+    transition:opacity .6s ease, visibility .6s ease; overflow:hidden;
 }
 #splash.hide { opacity:0; visibility:hidden; pointer-events:none; }
-.splash-container { display:flex; flex-direction:column; align-items:center; gap:28px; position:relative; z-index:1; }
+#splash::before {
+    content:''; position:absolute; inset:0;
+    background-image:
+        linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+    background-size:44px 44px;
+    animation:gridMove 16s linear infinite;
+}
+@keyframes gridMove { 0%{transform:translate(0,0);} 100%{transform:translate(44px,44px);} }
+.splash-container { display:flex; flex-direction:column; align-items:center; gap:24px; position:relative; z-index:1; }
+.splash-logo { width:88px; height:88px; }
+.splash-logo svg { width:100%; height:100%; animation:logoSpin 14s linear infinite; }
+@keyframes logoSpin { to { transform:rotate(360deg); } }
 .splash-name {
-    font-size:3rem; font-weight:900; text-transform:uppercase; letter-spacing:-0.02em;
-    background:linear-gradient(135deg,#fff 0%,#00e5ff 50%,#ff0055 100%);
+    font-size:2.6rem; font-weight:900; text-transform:uppercase; letter-spacing:-0.02em;
+    background:linear-gradient(135deg,#fff 0%,#00e5ff 45%,#ff5e00 100%);
+    background-size:200% 200%;
     -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+    animation:nameShine 3s ease-in-out infinite;
 }
-.splash-spinner {
-    width:50px; height:50px; border:3px solid rgba(255,255,255,.05);
-    border-top:3px solid #ff5e00; border-right:3px solid #00e5ff; border-bottom:3px solid #7c3aed;
-    border-radius:50%; animation:spin 1s linear infinite;
+@keyframes nameShine { 0%,100%{background-position:0% 50%;} 50%{background-position:100% 50%;} }
+.splash-progress { width:220px; height:6px; background:rgba(255,255,255,0.08); overflow:hidden; position:relative; border-radius:2px; }
+.splash-progress-bar {
+    height:100%; width:0%; background:linear-gradient(90deg,#ff5e00,#fbbf24);
+    transition:width .35s cubic-bezier(0.25,0.46,0.45,0.94); border-radius:2px;
 }
-.splash-sub { color:#666; font-weight:500; font-size:.85rem; letter-spacing:3px; text-transform:uppercase; }
+.splash-sub { color:#666; font-weight:600; font-size:.75rem; letter-spacing:2.5px; text-transform:uppercase; transition:opacity .2s ease; }
+
+/* ===== COIN HISTORY ===== */
+.history-item {
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    padding:12px 0; border-bottom:2px dashed #111;
+}
+.history-item:last-child { border-bottom:none; }
+.history-left { display:flex; align-items:center; gap:10px; }
+.history-icon {
+    width:34px; height:34px; display:flex; align-items:center; justify-content:center;
+    border:var(--border-thick); box-shadow:var(--shadow-light); flex-shrink:0; font-size:13px;
+}
+.history-icon.plus { background:var(--green); color:#fff; }
+.history-icon.minus { background:var(--red); color:#fff; }
+.history-reason { font-weight:800; font-size:13px; }
+.history-date { font-size:10px; font-weight:600; color:var(--text-muted); margin-top:2px; }
+.history-amount { font-weight:900; font-size:15px; white-space:nowrap; }
+.history-amount.plus { color:var(--green); }
+.history-amount.minus { color:var(--red); }
 
 /* ===== FORM CARD (login/register) ===== */
 .auth-wrap { min-height:100vh; display:flex; align-items:center; justify-content:center; padding:20px; }
