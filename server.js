@@ -81,6 +81,20 @@ function sanitizeUser(u) {
   };
 }
 
+async function logCoinTransaction(userId, amount, reason, balanceAfter) {
+  try {
+    await sb('POST', 'polar_coin_logs', {
+      user_id: userId,
+      amount,
+      reason,
+      balance_after: balanceAfter,
+      created_at: Date.now()
+    });
+  } catch (e) {
+    console.error('Gagal catat riwayat koin:', e.message);
+  }
+}
+
 // ============================================================
 // AUTH HELPERS (JWT via httpOnly cookie)
 // ============================================================
@@ -295,6 +309,7 @@ app.get('/api/earn/callback', authMiddleware, async (req, res) => {
     }
     const newCoins = (user.coins || 0) + 1;
     await sb('PATCH', `polar_users?id=eq.${user.id}`, { coins: newCoins, earn_flag: false });
+    await logCoinTransaction(user.id, 1, 'earn', newCoins);
     res.redirect(`/dashboard?earn=success&coins=${newCoins}`);
   } catch (e) {
     console.error(e);
@@ -307,11 +322,21 @@ app.get('/api/earn/callback', authMiddleware, async (req, res) => {
 // ============================================================
 app.post('/api/coins/update', authMiddleware, async (req, res) => {
   try {
-    const { amount } = req.body;
+    const { amount, reason } = req.body;
     const user = await getUserById(req.user.uid);
     const newCoins = Math.max(0, (user.coins || 0) + Number(amount));
     await sb('PATCH', `polar_users?id=eq.${user.id}`, { coins: newCoins });
+    await logCoinTransaction(user.id, Number(amount), reason || 'manual_adjust', newCoins);
     res.json({ success: true, coins: newCoins });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+app.get('/api/coins/history', authMiddleware, async (req, res) => {
+  try {
+    const rows = await sb('GET', `polar_coin_logs?user_id=eq.${req.user.uid}&order=created_at.desc&limit=50`);
+    res.json({ success: true, logs: rows });
   } catch (e) {
     res.status(500).json({ success: false, message: e.message });
   }
@@ -341,6 +366,7 @@ app.post('/api/sessions', authMiddleware, async (req, res) => {
     }
 
     await sb('PATCH', `polar_users?id=eq.${user.id}`, { coins: user.coins - coin });
+    await logCoinTransaction(user.id, -coin, `claim_session:${script}`, user.coins - coin);
 
     const [session] = await sb('POST', 'polar_sessions', {
       user_id: req.user.uid,
