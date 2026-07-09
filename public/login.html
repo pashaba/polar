@@ -4,6 +4,29 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="theme-color" content="#ff5e00">
+<meta name="description" content="Claim server bot WhatsApp gratis di Polar.web.id pakai sistem Polar Coin. Login atau daftar sekarang, tanpa biaya.">
+<meta name="keywords" content="bot whatsapp gratis, jadibot, server bot whatsapp, polar.web.id, whatsapp bot hosting">
+<!-- Google Search Console verification — ganti "GANTI_DENGAN_KODE_VERIFIKASI" pas udah dapet kode dari Search Console -->
+<meta name="google-site-verification" content="GANTI_DENGAN_KODE_VERIFIKASI">
+
+<meta name="robots" content="index, follow">
+<link rel="canonical" href="https://polar.web.id/login">
+
+<!-- Open Graph -->
+<meta property="og:type" content="website">
+<meta property="og:title" content="Polar.web.id — Bot WhatsApp Gratis">
+<meta property="og:description" content="Claim server bot WhatsApp gratis pakai Polar Coin. Login atau daftar sekarang, tanpa biaya.">
+<meta property="og:url" content="https://polar.web.id/login">
+<meta property="og:image" content="https://polar.web.id/icons/icon-512.png">
+<meta property="og:site_name" content="Polar.web.id">
+<meta property="og:locale" content="id_ID">
+
+<!-- Twitter Card -->
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Polar.web.id — Bot WhatsApp Gratis">
+<meta name="twitter:description" content="Claim server bot WhatsApp gratis pakai Polar Coin.">
+<meta name="twitter:image" content="https://polar.web.id/icons/icon-512.png">
+
 <link rel="manifest" href="/manifest.json">
 <link rel="icon" href="/icons/icon-192.png">
 <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
@@ -20,29 +43,9 @@
   })();
 </script>
 </head>
-<body>
+<body class="page-fade-in">
 
-<div id="splash">
-  <div class="splash-container">
-    <div class="splash-logo">
-      <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="100" cy="100" r="88" fill="none" stroke="url(#ringGrad)" stroke-width="4" stroke-dasharray="10 15"/>
-        <polygon points="100,30 112,68 153,68 120,92 132,130 100,106 68,130 80,92 47,68 88,68" fill="url(#starGrad)" stroke="white" stroke-width="2"/>
-        <defs>
-          <linearGradient id="ringGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stop-color="#ff5e00"/><stop offset="50%" stop-color="#00e5ff"/><stop offset="100%" stop-color="#7c3aed"/>
-          </linearGradient>
-          <linearGradient id="starGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stop-color="#fbbf24"/><stop offset="100%" stop-color="#f59e0b"/>
-          </linearGradient>
-        </defs>
-      </svg>
-    </div>
-    <div class="splash-name">Polar.web.id</div>
-    <div class="splash-progress"><div class="splash-progress-bar" style="width:100%;"></div></div>
-    <div class="splash-sub">Menyiapkan halaman...</div>
-  </div>
-</div>
+<div id="topProgress"><div id="topProgressBar"></div></div>
 
 <button class="theme-toggle-btn" id="themeToggleBtn" onclick="toggleTheme()" style="position:fixed;top:16px;right:16px;z-index:50;"><i class="fas fa-moon" id="themeIcon"></i></button>
 
@@ -66,6 +69,10 @@
         <input type="password" id="loginPassword" placeholder="••••••••" required>
       </div>
       <div class="cf-turnstile" id="turnstileLogin" data-sitekey="{{TURNSTILE_SITE_KEY}}" data-theme="auto" style="margin-bottom:14px;"></div>
+      <div class="privacy-check">
+        <input type="checkbox" id="loginPrivacyCheck">
+        <label for="loginPrivacyCheck">Saya udah baca & setuju sama <a href="/privacy" target="_blank">Kebijakan Privasi</a> Polar.web.id</label>
+      </div>
       <button type="submit" class="btn btn-orange btn-full" id="loginBtn">
         <i class="fas fa-right-to-bracket"></i> LOGIN
       </button>
@@ -109,6 +116,10 @@
         <input type="password" id="regPassword" placeholder="Minimal 6 karakter" minlength="6" required>
       </div>
       <div class="cf-turnstile" id="turnstileRegister" data-sitekey="{{TURNSTILE_SITE_KEY}}" data-theme="auto" style="margin-bottom:14px;"></div>
+      <div class="privacy-check">
+        <input type="checkbox" id="regPrivacyCheck">
+        <label for="regPrivacyCheck">Saya udah baca & setuju sama <a href="/privacy" target="_blank">Kebijakan Privasi</a> Polar.web.id</label>
+      </div>
       <button type="submit" class="btn btn-orange btn-full" id="registerBtn">
         <i class="fas fa-user-plus"></i> DAFTAR
       </button>
@@ -142,8 +153,17 @@
 <div class="toast" id="toast"></div>
 
 <script>
+function setTopProgress(pct) {
+  const bar = document.getElementById('topProgressBar');
+  if (!bar) return;
+  bar.classList.remove('done');
+  bar.style.width = pct + '%';
+  if (pct >= 100) setTimeout(() => bar.classList.add('done'), 300);
+}
+
 window.addEventListener('load', () => {
-  setTimeout(() => document.getElementById('splash').classList.add('hide'), 500);
+  setTopProgress(60);
+  setTimeout(() => setTopProgress(100), 150);
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('/sw.js').catch(() => {});
   }
@@ -208,8 +228,14 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
   const password = document.getElementById('loginPassword').value;
   const captchaToken = document.querySelector('#turnstileLogin [name="cf-turnstile-response"]')?.value || '';
 
+  if (!document.getElementById('loginPrivacyCheck').checked) {
+    showError('loginError', 'Kamu harus centang persetujuan Kebijakan Privasi dulu');
+    return;
+  }
+
   btn.disabled = true;
   btn.innerHTML = '<i class="fas fa-spinner fa-pulse"></i> Memproses...';
+  setTopProgress(30);
 
   try {
     const res = await fetch('/api/auth/login', {
@@ -225,6 +251,7 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
       return;
     }
     showToast('✅ Login berhasil!', 'success');
+    setTopProgress(100);
     setTimeout(() => window.location.href = '/dashboard', 600);
   } catch (err) {
     showError('loginError', 'Koneksi gagal, coba lagi.');
@@ -249,15 +276,21 @@ document.getElementById('registerForm').addEventListener('submit', async (e) => 
     return;
   }
 
+  if (!document.getElementById('regPrivacyCheck').checked) {
+    showError('registerError', 'Kamu harus centang persetujuan Kebijakan Privasi dulu');
+    return;
+  }
+
   btn.disabled = true;
   btn.innerHTML = '<i class="fas fa-spinner fa-pulse"></i> Memproses...';
+  setTopProgress(30);
 
   try {
     const res = await fetch('/api/auth/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
-      body: JSON.stringify({ name, email, password, captchaToken })
+      body: JSON.stringify({ name, email, password, captchaToken, privacyAccepted: true })
     });
     const data = await res.json();
     if (!data.success) {
@@ -266,6 +299,7 @@ document.getElementById('registerForm').addEventListener('submit', async (e) => 
       return;
     }
     showToast('✅ Akun berhasil dibuat!', 'success');
+    setTopProgress(100);
     setTimeout(() => window.location.href = '/dashboard', 600);
   } catch (err) {
     showError('registerError', 'Koneksi gagal, coba lagi.');
