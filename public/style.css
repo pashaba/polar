@@ -78,40 +78,37 @@ body {
 @keyframes borderPulse { 0%,100%{box-shadow:var(--shadow-heavy);} 50%{box-shadow:3px 3px 0px 0px #111111;} }
 .animate-in { animation:fadeInUp .4s ease forwards; }
 
-/* ===== SPLASH ===== */
-#splash {
-    position:fixed; inset:0; z-index:9999; background:#0a0a0a;
-    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:30px;
-    transition:opacity .6s ease, visibility .6s ease; overflow:hidden;
+/* ===== TOP PROGRESS BAR (modern loading, ganti splash lama) ===== */
+#topProgress {
+    position: fixed; top: 0; left: 0; right: 0; height: 3px; z-index: 9999;
+    background: transparent; pointer-events: none;
 }
-#splash.hide { opacity:0; visibility:hidden; pointer-events:none; }
-#splash::before {
-    content:''; position:absolute; inset:0;
-    background-image:
-        linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
-    background-size:44px 44px;
-    animation:gridMove 16s linear infinite;
+#topProgressBar {
+    height: 100%; width: 0%;
+    background: linear-gradient(90deg, #ff5e00, #fbbf24, #00e5ff);
+    background-size: 200% 100%;
+    animation: topProgressShine 1.2s linear infinite;
+    transition: width .25s ease, opacity .3s ease;
+    box-shadow: 0 0 8px rgba(255,94,0,.6);
 }
-@keyframes gridMove { 0%{transform:translate(0,0);} 100%{transform:translate(44px,44px);} }
-.splash-container { display:flex; flex-direction:column; align-items:center; gap:24px; position:relative; z-index:1; }
-.splash-logo { width:88px; height:88px; }
-.splash-logo svg { width:100%; height:100%; animation:logoSpin 14s linear infinite; }
-@keyframes logoSpin { to { transform:rotate(360deg); } }
-.splash-name {
-    font-size:2.6rem; font-weight:900; text-transform:uppercase; letter-spacing:-0.02em;
-    background:linear-gradient(135deg,#fff 0%,#00e5ff 45%,#ff5e00 100%);
-    background-size:200% 200%;
-    -webkit-background-clip:text; -webkit-text-fill-color:transparent;
-    animation:nameShine 3s ease-in-out infinite;
+@keyframes topProgressShine { 0%{background-position:0% 0%;} 100%{background-position:200% 0%;} }
+#topProgressBar.done { opacity: 0; }
+
+/* ===== SKELETON LOADER ===== */
+.skeleton {
+    background: linear-gradient(90deg, #e8e8e8 25%, #f5f5f5 50%, #e8e8e8 75%);
+    background-size: 200% 100%;
+    animation: skeletonShine 1.4s ease-in-out infinite;
 }
-@keyframes nameShine { 0%,100%{background-position:0% 50%;} 50%{background-position:100% 50%;} }
-.splash-progress { width:220px; height:6px; background:rgba(255,255,255,0.08); overflow:hidden; position:relative; border-radius:2px; }
-.splash-progress-bar {
-    height:100%; width:0%; background:linear-gradient(90deg,#ff5e00,#fbbf24);
-    transition:width .35s cubic-bezier(0.25,0.46,0.45,0.94); border-radius:2px;
+[data-theme="dark"] .skeleton {
+    background: linear-gradient(90deg, #242424 25%, #2f2f2f 50%, #242424 75%);
+    background-size: 200% 100%;
 }
-.splash-sub { color:#666; font-weight:600; font-size:.75rem; letter-spacing:2.5px; text-transform:uppercase; transition:opacity .2s ease; }
+@keyframes skeletonShine { 0%{background-position:200% 0;} 100%{background-position:-200% 0;} }
+.skeleton-card { height: 64px; border: var(--border-thick); box-shadow: var(--shadow-light); margin-bottom: 16px; }
+.skeleton-line { height: 12px; border-radius: 2px; margin-bottom: 8px; }
+
+.page-fade-in { animation: fadeInUp .35s ease; }
 
 /* ===== COIN HISTORY ===== */
 .history-item {
@@ -169,6 +166,16 @@ body {
 .g-icon img { width:18px; height:18px; }
 .auth-switch { margin-top:18px; font-size:12px; font-weight:600; color:var(--text-muted); }
 .auth-switch a { color:var(--orange); font-weight:900; text-decoration:none; }
+
+.privacy-check {
+    display:flex; align-items:flex-start; gap:8px; text-align:left; margin-bottom:14px;
+    font-size:11.5px; font-weight:600; color:var(--text-muted); line-height:1.5;
+}
+.privacy-check input[type="checkbox"] {
+    margin-top:2px; width:16px; height:16px; flex-shrink:0; accent-color:var(--orange); cursor:pointer;
+}
+.privacy-check a { color:var(--orange); font-weight:800; text-decoration:underline; }
+.privacy-check label { cursor:pointer; }
 
 /* ===== BUTTONS ===== */
 .btn {
@@ -270,12 +277,7 @@ body {
 .toast.success { border-left:8px solid var(--green); }
 .toast.error { border-left:8px solid var(--red); }
 .toast.gold { border-left:8px solid var(--gold); }
-.loading-overlay { position:fixed; inset:0; background:rgba(0,0,0,.7); z-index:1100; display:none; align-items:center; justify-content:center; padding:20px; }
-.loading-overlay.active { display:flex; }
-.loading-box { background:var(--bg-card); border:var(--border-thick); box-shadow:var(--shadow-heavy); padding:34px 24px; max-width:380px; width:100%; text-align:center; animation:slideUp .3s ease; }
-.loading-spinner { width:44px; height:44px; border:6px solid #111; border-top-color:var(--orange); animation:spin .7s linear infinite; margin:0 auto 12px; }
-.loading-title { font-size:18px; font-weight:900; text-transform:uppercase; }
-.loading-desc { font-size:12px; font-weight:500; color:var(--text-muted); }
+/* loading-overlay lama udah dihapus, diganti top progress bar + skeleton + spinner inline di tombol */
 .pairing-overlay { position:fixed; inset:0; background:rgba(0,0,0,.8); z-index:1101; display:none; align-items:center; justify-content:center; padding:20px; }
 .pairing-overlay.active { display:flex; animation:fadeInUp .3s ease; }
 .pairing-box { background:var(--bg-card); border:var(--border-thick); box-shadow:var(--shadow-heavy); padding:30px 20px; max-width:400px; width:100%; animation:slideUp .4s ease; }
