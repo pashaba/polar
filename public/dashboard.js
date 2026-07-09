@@ -15,6 +15,27 @@ const PACKAGES = [
 ];
 
 // ============================================================
+// CHANNEL POPUP (ajakan join saluran WA)
+// ============================================================
+const CHANNEL_POPUP_COOLDOWN_DAYS = 7;
+
+function maybeShowChannelPopup() {
+  const lastDismissed = localStorage.getItem('polar_channel_popup_dismissed');
+  const now = Date.now();
+  if (lastDismissed && (now - Number(lastDismissed)) < CHANNEL_POPUP_COOLDOWN_DAYS * 24 * 60 * 60 * 1000) {
+    return;
+  }
+  setTimeout(() => {
+    document.getElementById('channelPopupOverlay')?.classList.add('active');
+  }, 1200);
+}
+
+function closeChannelPopup() {
+  document.getElementById('channelPopupOverlay')?.classList.remove('active');
+  localStorage.setItem('polar_channel_popup_dismissed', Date.now().toString());
+}
+
+// ============================================================
 // INIT
 // ============================================================
 document.addEventListener('DOMContentLoaded', async () => {
@@ -23,6 +44,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   await Promise.all([loadSessions(), loadServerStatus()]);
   loadCoinHistory();
   checkEarnCoinReturn();
+  maybeShowChannelPopup();
   setInterval(loadMe, 30000);
 });
 
@@ -337,6 +359,9 @@ function openPairModal(phone) {
 document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('pairingOverlay').addEventListener('click', function (e) {
     if (e.target === this) closePairingModal();
+  });
+  document.getElementById('channelPopupOverlay')?.addEventListener('click', function (e) {
+    if (e.target === this) closeChannelPopup();
   });
 });
 
