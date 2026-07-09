@@ -4,7 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
 <meta name="theme-color" content="#ff5e00">
+<meta name="robots" content="noindex, nofollow">
 <meta name="description" content="Claim server bot WhatsApp gratis pakai Polar Coin">
+<link rel="canonical" href="https://polar.web.id/dashboard">
 <link rel="manifest" href="/manifest.json">
 <link rel="icon" href="/icons/icon-192.png">
 <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
@@ -23,41 +25,11 @@
 </head>
 <body id="body" class="locked-bg">
 
-<div id="splash">
-  <div class="splash-container">
-    <div class="splash-logo">
-      <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="100" cy="100" r="88" fill="none" stroke="url(#ringGrad)" stroke-width="4" stroke-dasharray="10 15"/>
-        <polygon points="100,30 112,68 153,68 120,92 132,130 100,106 68,130 80,92 47,68 88,68" fill="url(#starGrad)" stroke="white" stroke-width="2"/>
-        <defs>
-          <linearGradient id="ringGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stop-color="#ff5e00"/><stop offset="50%" stop-color="#00e5ff"/><stop offset="100%" stop-color="#7c3aed"/>
-          </linearGradient>
-          <linearGradient id="starGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stop-color="#fbbf24"/><stop offset="100%" stop-color="#f59e0b"/>
-          </linearGradient>
-        </defs>
-      </svg>
-    </div>
-    <div class="splash-name">Polar.web.id</div>
-    <div class="splash-progress"><div class="splash-progress-bar" id="splashProgressBar"></div></div>
-    <div class="splash-sub" id="splashSub">Menghubungkan...</div>
-  </div>
-</div>
-
 <a href="https://wa.me/6285715294026" target="_blank" style="position:fixed;bottom:20px;left:20px;z-index:150;width:52px;height:52px;background:var(--green);color:#fff;border:var(--border-thick);box-shadow:var(--shadow-heavy);display:flex;align-items:center;justify-content:center;font-size:24px;text-decoration:none;">
   <i class="fab fa-whatsapp"></i>
 </a>
 
 <div class="toast" id="toast"></div>
-
-<div class="loading-overlay" id="loadingOverlay">
-  <div class="loading-box">
-    <div class="loading-spinner"></div>
-    <div class="loading-title" id="loadingTitle">Memproses...</div>
-    <div class="loading-desc" id="loadingDesc">Mohon tunggu sebentar</div>
-  </div>
-</div>
 
 <div class="pairing-overlay" id="pairingOverlay">
   <div class="pairing-box">
