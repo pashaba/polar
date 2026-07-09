@@ -168,11 +168,15 @@ function authMiddleware(req, res, next) {
 // ============================================================
 app.post('/api/auth/register', async (req, res) => {
   try {
-    const { email, password, name, captchaToken } = req.body;
+    const { email, password, name, captchaToken, privacyAccepted } = req.body;
 
     const captchaOk = await verifyTurnstile(captchaToken, getClientIp(req));
     if (!captchaOk) {
       return res.status(400).json({ success: false, message: 'Verifikasi captcha gagal, coba lagi.' });
+    }
+
+    if (!privacyAccepted) {
+      return res.status(400).json({ success: false, message: 'Kamu harus setuju sama Kebijakan Privasi dulu.' });
     }
 
     if (!email || !password) {
@@ -198,7 +202,8 @@ app.post('/api/auth/register', async (req, res) => {
       password_hash,
       auth_provider: 'local',
       coins: 0,
-      created_at: Date.now()
+      created_at: Date.now(),
+      privacy_accepted_at: Date.now()
     });
 
     const token = signToken(user);
