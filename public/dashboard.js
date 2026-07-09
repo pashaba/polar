@@ -17,23 +17,11 @@ const PACKAGES = [
 // ============================================================
 // INIT
 // ============================================================
-function setTopProgress(pct) {
-  const bar = document.getElementById('topProgressBar');
-  if (!bar) return;
-  bar.classList.remove('done');
-  bar.style.width = pct + '%';
-  if (pct >= 100) setTimeout(() => bar.classList.add('done'), 300);
-}
-
 document.addEventListener('DOMContentLoaded', async () => {
-  setTopProgress(20);
   await loadMe();
-  setTopProgress(55);
   renderPackages();
   await Promise.all([loadSessions(), loadServerStatus()]);
-  setTopProgress(85);
   loadCoinHistory();
-  setTopProgress(100);
   checkEarnCoinReturn();
   setInterval(loadMe, 30000);
 });
@@ -263,8 +251,6 @@ async function createSessionWithCoin() {
 
   const btn = document.getElementById('claimBtn');
   btn.disabled = true;
-  btn.innerHTML = '<i class="fas fa-spinner fa-pulse"></i> Memproses...';
-  setTopProgress(30);
 
   try {
     const res = await fetch('/api/sessions', {
@@ -278,13 +264,11 @@ async function createSessionWithCoin() {
 
     currentUser.coins = data.coins;
     renderUser();
-    setTopProgress(100);
     showToast(`✅ Server berhasil di-claim! ${selectedDays} hari aktif. 🎉`, 'success');
     await loadSessions();
     loadCoinHistory();
     showPairingModal(phone);
   } catch (e) {
-    setTopProgress(100);
     showToast('❌ ' + e.message, 'error');
   } finally {
     btn.disabled = false;
