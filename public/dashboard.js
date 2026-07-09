@@ -17,27 +17,23 @@ const PACKAGES = [
 // ============================================================
 // INIT
 // ============================================================
-function setSplashProgress(pct, label) {
-  const bar = document.getElementById('splashProgressBar');
-  const sub = document.getElementById('splashSub');
-  if (bar) bar.style.width = pct + '%';
-  if (sub && label) sub.textContent = label;
-}
-
-function hideSplash() {
-  setTimeout(() => document.getElementById('splash')?.classList.add('hide'), 250);
+function setTopProgress(pct) {
+  const bar = document.getElementById('topProgressBar');
+  if (!bar) return;
+  bar.classList.remove('done');
+  bar.style.width = pct + '%';
+  if (pct >= 100) setTimeout(() => bar.classList.add('done'), 300);
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
-  setSplashProgress(15, 'Menghubungkan ke akun...');
+  setTopProgress(20);
   await loadMe();
-  setSplashProgress(55, 'Memuat data bot...');
+  setTopProgress(55);
   renderPackages();
   await Promise.all([loadSessions(), loadServerStatus()]);
-  setSplashProgress(90, 'Menyiapkan dashboard...');
+  setTopProgress(85);
   loadCoinHistory();
-  setSplashProgress(100, 'Selesai!');
-  hideSplash();
+  setTopProgress(100);
   checkEarnCoinReturn();
   setInterval(loadMe, 30000);
 });
@@ -130,14 +126,7 @@ function navTo(sectionId) {
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
-function showLoading(title = 'Memproses...', desc = 'Mohon tunggu sebentar') {
-  document.getElementById('loadingTitle').textContent = title;
-  document.getElementById('loadingDesc').textContent = desc;
-  document.getElementById('loadingOverlay').classList.add('active');
-}
-function hideLoading() {
-  document.getElementById('loadingOverlay').classList.remove('active');
-}
+// loading modal lama udah dihapus — sekarang cukup pakai top progress bar + spinner di tombol
 
 // ============================================================
 // PACKAGE / SCRIPT SELECT
@@ -275,7 +264,7 @@ async function createSessionWithCoin() {
   const btn = document.getElementById('claimBtn');
   btn.disabled = true;
   btn.innerHTML = '<i class="fas fa-spinner fa-pulse"></i> Memproses...';
-  showLoading('Membuat Session...', 'Mohon tunggu sebentar');
+  setTopProgress(30);
 
   try {
     const res = await fetch('/api/sessions', {
@@ -289,13 +278,13 @@ async function createSessionWithCoin() {
 
     currentUser.coins = data.coins;
     renderUser();
-    hideLoading();
+    setTopProgress(100);
     showToast(`✅ Server berhasil di-claim! ${selectedDays} hari aktif. 🎉`, 'success');
     await loadSessions();
     loadCoinHistory();
     showPairingModal(phone);
   } catch (e) {
-    hideLoading();
+    setTopProgress(100);
     showToast('❌ ' + e.message, 'error');
   } finally {
     btn.disabled = false;
