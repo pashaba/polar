@@ -16,7 +16,7 @@ app.use(express.static(path.join(__dirname, 'public'), { index: false, extension
 // ============================================================
 // CLEAN URL ROUTES (gak perlu .html)
 // ============================================================
-app.get('/', (req, res) => res.redirect('/dashboard'));
+app.get('/', (req, res) => res.redirect('/login'));
 app.get('/dashboard', (req, res) => res.sendFile(path.join(__dirname, 'public', 'dashboard.html')));
 
 // /login pakai templating manual buat inject TURNSTILE_SITE_KEY (site key aman ditaruh di HTML, cuma secret key yang rahasia)
