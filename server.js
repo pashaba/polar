@@ -42,13 +42,19 @@ const {
   GOOGLE_CLIENT_SECRET,
   GOOGLE_REDIRECT_URI,
   PTERO_PANEL,
+  PHOENIX_PANEL,
   PHOENIX_API_KEY,
   PHOENIX_UUID,
+  OURIN_PANEL,
   OURIN_API_KEY,
   OURIN_UUID,
   SAFELINK_URL,
   APP_URL
 } = process.env;
+
+// Kalau PHOENIX_PANEL / OURIN_PANEL gak diisi, fallback ke PTERO_PANEL (backward compatible kalau panelnya sama)
+const PHOENIX_PANEL_URL = PHOENIX_PANEL || PTERO_PANEL;
+const OURIN_PANEL_URL = OURIN_PANEL || PTERO_PANEL;
 
 const MAX_SESSIONS = Number(process.env.MAX_SESSIONS || 10);
 
@@ -455,9 +461,9 @@ app.delete('/api/sessions/:id', authMiddleware, async (req, res) => {
 // ============================================================
 // SERVER STATUS (Pterodactyl - Phoenix & Ourin)
 // ============================================================
-async function checkServer(uuid, apiKey) {
+async function checkServer(panelUrl, uuid, apiKey) {
   try {
-    const r = await fetch(`${PTERO_PANEL}/api/client/servers/${uuid}/resources`, {
+    const r = await fetch(`${panelUrl}/api/client/servers/${uuid}/resources`, {
       headers: { Authorization: `Bearer ${apiKey}`, Accept: 'application/json' }
     });
     if (!r.ok) throw new Error('offline');
@@ -471,8 +477,8 @@ async function checkServer(uuid, apiKey) {
 
 app.get('/api/server-status', async (req, res) => {
   const [phoenix, ourin] = await Promise.all([
-    checkServer(PHOENIX_UUID, PHOENIX_API_KEY),
-    checkServer(OURIN_UUID, OURIN_API_KEY)
+    checkServer(PHOENIX_PANEL_URL, PHOENIX_UUID, PHOENIX_API_KEY),
+    checkServer(OURIN_PANEL_URL, OURIN_UUID, OURIN_API_KEY)
   ]);
   res.json({ success: true, phoenix, ourin });
 });
