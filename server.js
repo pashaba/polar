@@ -351,9 +351,8 @@ app.get('/api/me', authMiddleware, async (req, res) => {
 app.get('/api/earn/start', authMiddleware, async (req, res) => {
   try {
     const user = await getUserById(req.user.uid);
-    if (user.earn_flag) {
-      return res.redirect('/dashboard?earn=pending');
-    }
+    // Selalu boleh mulai ulang, walau earn_flag sebelumnya masih true (misal user mencet back / gak nyelesain).
+    // Aman: coin cuma ke-kasih sekali per siklus, soalnya begitu /api/earn/callback berhasil, flag langsung direset ke false.
     await sb('PATCH', `polar_users?id=eq.${user.id}`, { earn_flag: true });
     res.redirect(SAFELINK_URL);
   } catch (e) {
