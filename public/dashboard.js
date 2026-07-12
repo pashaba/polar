@@ -157,6 +157,10 @@ function renderPackages() {
 }
 
 function selectScript(el) {
+  if (el.dataset.offline === 'true') {
+    showToast('⚠️ Script ini lagi offline, gak bisa dipilih dulu.', 'error');
+    return;
+  }
   document.querySelectorAll('.select-box[data-script]').forEach(b => b.classList.remove('active'));
   el.classList.add('active');
 }
@@ -261,6 +265,11 @@ async function createSessionWithCoin() {
   const phoneRaw = document.getElementById('phoneInput').value.trim();
   const scriptEl = document.querySelector('.select-box.active[data-script]');
   const script = scriptEl ? scriptEl.dataset.script : 'phoenix_md';
+
+  if (scriptEl && scriptEl.dataset.offline === 'true') {
+    showToast('⚠️ Script ini lagi offline, pilih yang lain dulu.', 'error');
+    return;
+  }
 
   if (!phoneRaw) { showToast('📱 Masukkan nomor WhatsApp', 'error'); return; }
   if (currentUser.coins < selectedCoin) { showToast(`🪙 Polar Coin tidak cukup! Butuh ${selectedCoin} coin.`, 'error'); return; }
@@ -440,6 +449,7 @@ async function loadServerStatus() {
     setStatusUI('phoenix', phoenix);
     setStatusUI('ourin', ourin);
     setStatusUI('ourinDeluxe', ourinDeluxe);
+    updateScriptAvailability({ phoenix_md: phoenix, ourin_md: ourin, ourin_md_deluxe: ourinDeluxe });
 
     const onlineCount = (phoenix.online ? 1 : 0) + (ourin.online ? 1 : 0) + (ourinDeluxe.online ? 1 : 0);
     document.getElementById('statOnline').textContent = onlineCount;
@@ -447,6 +457,40 @@ async function loadServerStatus() {
   } catch (e) {
     console.error(e);
   }
+}
+
+function updateScriptAvailability(statusMap) {
+  Object.entries(statusMap).forEach(([script, status]) => {
+    const box = document.getElementById('scriptOption-' + script);
+    if (!box) return;
+
+    let badge = box.querySelector('.script-offline-badge');
+
+    if (!status.online) {
+      box.dataset.offline = 'true';
+      box.style.opacity = '.45';
+      box.style.cursor = 'not-allowed';
+      if (box.classList.contains('active')) {
+        box.classList.remove('active');
+        const firstOnline = Object.entries(statusMap).find(([, s]) => s.online);
+        if (firstOnline) {
+          document.getElementById('scriptOption-' + firstOnline[0])?.classList.add('active');
+        }
+      }
+      if (!badge) {
+        badge = document.createElement('p');
+        badge.className = 'script-offline-badge';
+        badge.style.cssText = 'color:var(--red);font-size:9px;font-weight:700;margin-top:2px;';
+        badge.textContent = 'Sedang offline';
+        box.appendChild(badge);
+      }
+    } else {
+      box.dataset.offline = 'false';
+      box.style.opacity = '';
+      box.style.cursor = '';
+      badge?.remove();
+    }
+  });
 }
 
 function setStatusUI(prefix, status) {
