@@ -1,0 +1,97 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
+
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    font-family:Inter,sans-serif;
+}
+
+body{
+    background:#050816;
+    color:white;
+    line-height:1.8;
+}
+
+nav{
+    padding:20px 8%;
+    border-bottom:1px solid #1e293b;
+    display:flex;
+    justify-content:space-between;
+}
+
+.logo{
+    font-size:26px;
+    font-weight:800;
+    color:#38bdf8;
+}
+
+nav a{
+    color:#cbd5e1;
+    margin-left:20px;
+    text-decoration:none;
+}
+
+.container{
+    max-width:900px;
+    margin:auto;
+    padding:50px 20px;
+}
+
+.hero{
+    text-align:center;
+    padding:70px 20px;
+}
+
+.hero h1{
+    font-size:45px;
+}
+
+.hero span{
+    color:#38bdf8;
+}
+
+
+.article{
+    background:#0f172a;
+    border:1px solid #1e293b;
+    border-radius:20px;
+    padding:35px;
+    margin-bottom:30px;
+}
+
+
+.article h2,
+.article h3{
+    color:#38bdf8;
+    margin-bottom:15px;
+}
+
+
+.article p{
+    color:#cbd5e1;
+    margin-bottom:20px;
+}
+
+
+.article ul{
+    margin-left:25px;
+}
+
+
+.btn{
+    display:inline-block;
+    background:#38bdf8;
+    color:#020617;
+    padding:10px 20px;
+    border-radius:10px;
+    text-decoration:none;
+    font-weight:bold;
+}
+
+
+footer{
+    text-align:center;
+    padding:30px;
+    color:#64748b;
+}
