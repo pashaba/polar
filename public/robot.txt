@@ -2,25 +2,62 @@
 
 User-agent: *
 
-# Public pages
+
+# =========================
+# Public Pages
+# =========================
+
 Allow: /
+
 Allow: /login
-Allow: /privacy
 Allow: /about/
 Allow: /blogs/
 Allow: /docs/
+Allow: /faq/
+Allow: /terms/
+Allow: /privacy
+Allow: /guides/
+Allow: /compare/
+Allow: /security/
+Allow: /contact/
+Allow: /changelog/
+Allow: /status/
+Allow: /community/
+Allow: /media/
 
 
-# Private pages
+# =========================
+# Private Pages
+# =========================
+
 Disallow: /dashboard
 Disallow: /dashboard/
+
 Disallow: /api/
 
+# Authentication callback
+Disallow: /api/auth/
 
-# Prevent indexing of unnecessary files
+
+# =========================
+# User Data / Internal Files
+# =========================
+
+Disallow: /admin/
+Disallow: /private/
+
+
+# =========================
+# Prevent Indexing Unnecessary Files
+# =========================
+
 Disallow: /*.json$
 Disallow: /*.log$
+Disallow: /*.env$
 
 
+# =========================
 # Sitemap
+# =========================
+
 Sitemap: https://polar.web.id/sitemap.xml
