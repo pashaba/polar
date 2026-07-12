@@ -48,13 +48,17 @@ const {
   OURIN_PANEL,
   OURIN_API_KEY,
   OURIN_UUID,
+  OURIN_DELUXE_PANEL,
+  OURIN_DELUXE_API_KEY,
+  OURIN_DELUXE_UUID,
   SAFELINK_URL,
   APP_URL
 } = process.env;
 
-// Kalau PHOENIX_PANEL / OURIN_PANEL gak diisi, fallback ke PTERO_PANEL (backward compatible kalau panelnya sama)
+// Kalau PHOENIX_PANEL / OURIN_PANEL / OURIN_DELUXE_PANEL gak diisi, fallback ke PTERO_PANEL (backward compatible kalau panelnya sama)
 const PHOENIX_PANEL_URL = PHOENIX_PANEL || PTERO_PANEL;
 const OURIN_PANEL_URL = OURIN_PANEL || PTERO_PANEL;
+const OURIN_DELUXE_PANEL_URL = OURIN_DELUXE_PANEL || PTERO_PANEL;
 
 const MAX_SESSIONS = Number(process.env.MAX_SESSIONS || 10);
 
@@ -475,11 +479,12 @@ async function checkServer(panelUrl, uuid, apiKey) {
 }
 
 app.get('/api/server-status', async (req, res) => {
-  const [phoenix, ourin] = await Promise.all([
+  const [phoenix, ourin, ourinDeluxe] = await Promise.all([
     checkServer(PHOENIX_PANEL_URL, PHOENIX_UUID, PHOENIX_API_KEY),
-    checkServer(OURIN_PANEL_URL, OURIN_UUID, OURIN_API_KEY)
+    checkServer(OURIN_PANEL_URL, OURIN_UUID, OURIN_API_KEY),
+    checkServer(OURIN_DELUXE_PANEL_URL, OURIN_DELUXE_UUID, OURIN_DELUXE_API_KEY)
   ]);
-  res.json({ success: true, phoenix, ourin });
+  res.json({ success: true, phoenix, ourin, ourinDeluxe });
 });
 
 const PORT = process.env.PORT || 3000;
