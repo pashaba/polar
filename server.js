@@ -421,6 +421,18 @@ app.post('/api/sessions', authMiddleware, async (req, res) => {
     const { phone, script, days, coin } = req.body;
     if (!phone) return res.status(400).json({ success: false, message: 'Nomor WhatsApp wajib diisi' });
 
+    // 1. Cek script yang dipilih lagi online apa enggak
+    const scriptStatus = await getScriptStatus(script);
+    if (!scriptStatus.online) {
+      return res.status(400).json({ success: false, message: 'Script yang kamu pilih lagi offline. Coba lagi nanti atau pilih script lain.' });
+    }
+
+    // 2. Cek nomor ini udah kepake di session lain apa belum (siapa pun, bukan cuma user ini)
+    const existingPhone = await sb('GET', `polar_sessions?phone=eq.${encodeURIComponent(phone)}&select=id`);
+    if (existingPhone.length > 0) {
+      return res.status(400).json({ success: false, message: 'Nomor ini udah kedaftar di session lain. Hapus dulu session lamanya di menu Sessions sebelum claim ulang.' });
+    }
+
     const user = await getUserById(req.user.uid);
     if ((user.coins || 0) < coin) {
       return res.status(400).json({ success: false, message: 'Polar Coin tidak cukup' });
@@ -485,6 +497,20 @@ app.get('/api/server-status', async (req, res) => {
   ]);
   res.json({ success: true, phoenix, ourin, ourinDeluxe });
 });
+
+// Dipakai buat validasi pas claim session — mapping nama script ke status server-nya
+async function getScriptStatus(script) {
+  switch (script) {
+    case 'phoenix_md':
+      return checkServer(PHOENIX_PANEL_URL, PHOENIX_UUID, PHOENIX_API_KEY);
+    case 'ourin_md':
+      return checkServer(OURIN_PANEL_URL, OURIN_UUID, OURIN_API_KEY);
+    case 'ourin_md_deluxe':
+      return checkServer(OURIN_DELUXE_PANEL_URL, OURIN_DELUXE_UUID, OURIN_DELUXE_API_KEY);
+    default:
+      return { online: false };
+  }
+}
 
 const PORT = process.env.PORT || 3000;
 
