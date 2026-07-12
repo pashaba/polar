@@ -11,8 +11,7 @@ const app = express();
 app.use(express.json());
 app.use(cookieParser());
 app.use(cors({ origin: process.env.APP_URL || true, credentials: true }));
-app.use(express.static(path.join(__dirname, 'public'), { index: false, extensions: false }));
-
+app.use(express.static(path.join(__dirname, 'public')));
 // ============================================================
 // CLEAN URL ROUTES (gak perlu .html)
 // ============================================================
