@@ -8,9 +8,9 @@
     --text:#111;
     --muted:#333;
 
-    --border:6px solid #111;
-    --shadow:12px 12px 0 #111;
-    --shadow-small:8px 8px 0 #111;
+    --border:10px solid #111;
+    --shadow:20px 20px 0 #111;
+    --shadow-small:15px 15px 0 #111;
 }
 
 
@@ -25,8 +25,8 @@
 body{
     background:var(--bg-main);
     color:var(--text);
-    line-height:2;
-    font-size:22px;
+    line-height:2.5;
+    font-size:78px;
 }
 
 
@@ -35,9 +35,9 @@ body{
 nav{
     background:#fff;
     border-bottom:var(--border);
-    box-shadow:0 8px 0 #111;
+    box-shadow:0 12px 0 #111;
 
-    padding:28px 5%;
+    padding:80px 5%;
 
     display:flex;
     justify-content:space-between;
@@ -50,7 +50,7 @@ nav{
 
 
 .logo{
-    font-size:42px;
+    font-size:92px;
     font-weight:900;
     text-transform:uppercase;
 }
@@ -59,9 +59,9 @@ nav{
 nav a{
     color:#111;
     text-decoration:none;
-    font-size:22px;
+    font-size:77px;
     font-weight:800;
-    margin-left:35px;
+    margin-left:85px;
 }
 
 
@@ -70,14 +70,14 @@ nav a{
 
 .layout{
 
-    max-width:1400px;
+    max-width:2000px;
     margin:auto;
 
     display:grid;
 
-    grid-template-columns:380px 1fr;
+    grid-template-columns:500px 1fr;
 
-    gap:50px;
+    gap:100px;
 
 }
 
@@ -93,17 +93,17 @@ nav a{
 
     min-height:calc(100vh - 90px);
 
-    padding:50px 40px;
+    padding:100px 80px;
 
 }
 
 
 .sidebar h3{
 
-    font-size:32px;
+    font-size:86px;
     font-weight:900;
 
-    margin-bottom:30px;
+    margin-bottom:80px;
 
 }
 
@@ -116,11 +116,11 @@ nav a{
 
     text-decoration:none;
 
-    font-size:23px;
+    font-size:78px;
 
     font-weight:700;
 
-    padding:16px 0;
+    padding:30px 0;
 
 }
 
@@ -137,7 +137,7 @@ nav a{
 
 .content{
 
-    padding:70px 50px;
+    padding:120px 90px;
 
 }
 
@@ -145,7 +145,7 @@ nav a{
 
 .hero h1{
 
-    font-size:78px;
+    font-size:124px;
 
     font-weight:900;
 
@@ -163,9 +163,9 @@ nav a{
 
 .hero p{
 
-    margin-top:25px;
+    margin-top:60px;
 
-    font-size:28px;
+    font-size:82px;
 
     color:var(--muted);
 
@@ -185,9 +185,9 @@ nav a{
 
     box-shadow:var(--shadow);
 
-    padding:55px;
+    padding:100px;
 
-    margin:55px 0;
+    margin:100px 0;
 
 }
 
@@ -195,20 +195,20 @@ nav a{
 
 .card h2{
 
-    font-size:44px;
+    font-size:96px;
 
     font-weight:900;
 
-    margin-bottom:25px;
+    margin-bottom:60px;
 
 }
 
 
 .card h3{
 
-    font-size:32px;
+    font-size:86px;
 
-    margin-top:35px;
+    margin-top:70px;
 
     font-weight:900;
 
@@ -217,9 +217,9 @@ nav a{
 
 .card p{
 
-    font-size:24px;
+    font-size:78px;
 
-    margin-bottom:30px;
+    margin-bottom:60px;
 
     color:#222;
 
@@ -228,9 +228,9 @@ nav a{
 
 .card li{
 
-    font-size:23px;
+    font-size:76px;
 
-    margin-bottom:14px;
+    margin-bottom:30px;
 
 }
 
@@ -238,7 +238,7 @@ nav a{
 
 ul,ol{
 
-    margin-left:40px;
+    margin-left:80px;
 
 }
 
@@ -254,11 +254,11 @@ ul,ol{
 
     box-shadow:var(--shadow-small);
 
-    padding:30px;
+    padding:60px;
 
-    margin:30px 0;
+    margin:60px 0;
 
-    font-size:24px;
+    font-size:78px;
 
     font-weight:800;
 
@@ -276,11 +276,11 @@ pre{
 
     border:var(--border);
 
-    padding:30px;
+    padding:60px;
 
     overflow:auto;
 
-    font-size:21px;
+    font-size:68px;
 
 }
 
@@ -292,7 +292,7 @@ code{
 
     color:white;
 
-    padding:8px 12px;
+    padding:15px 20px;
 
 }
 
@@ -312,11 +312,11 @@ code{
 
     box-shadow:var(--shadow-small);
 
-    padding:20px 35px;
+    padding:50px 70px;
 
     text-decoration:none;
 
-    font-size:24px;
+    font-size:78px;
 
     font-weight:900;
 
@@ -325,9 +325,9 @@ code{
 
 .btn:hover{
 
-    transform:translate(4px,4px);
+    transform:translate(6px,6px);
 
-    box-shadow:4px 4px 0 #111;
+    box-shadow:8px 8px 0 #111;
 
 }
 
@@ -341,7 +341,7 @@ table{
 
     border-collapse:collapse;
 
-    margin:35px 0;
+    margin:70px 0;
 
 }
 
@@ -357,11 +357,11 @@ th{
 
 th,td{
 
-    border:4px solid #111;
+    border:6px solid #111;
 
-    padding:20px;
+    padding:50px;
 
-    font-size:22px;
+    font-size:72px;
 
 }
 
@@ -378,9 +378,9 @@ footer{
 
     text-align:center;
 
-    padding:50px;
+    padding:80px;
 
-    font-size:22px;
+    font-size:72px;
 
 }
 
@@ -393,7 +393,7 @@ footer{
 
     body{
 
-        font-size:20px;
+        font-size:48px;
 
     }
 
@@ -402,18 +402,18 @@ footer{
 
         flex-direction:column;
 
-        gap:18px;
+        gap:40px;
 
-        padding:25px;
+        padding:50px;
 
     }
 
 
     nav a{
 
-        margin:0 12px;
+        margin:0 20px;
 
-        font-size:19px;
+        font-size:44px;
 
     }
 
@@ -435,7 +435,7 @@ footer{
 
         border-bottom:var(--border);
 
-        padding:30px;
+        padding:60px;
 
     }
 
@@ -443,7 +443,7 @@ footer{
 
     .sidebar h3{
 
-        font-size:28px;
+        font-size:52px;
 
     }
 
@@ -451,7 +451,7 @@ footer{
 
     .sidebar a{
 
-        font-size:20px;
+        font-size:48px;
 
     }
 
@@ -459,7 +459,7 @@ footer{
 
     .content{
 
-        padding:30px 20px;
+        padding:60px 40px;
 
     }
 
@@ -467,7 +467,7 @@ footer{
 
     .hero h1{
 
-        font-size:44px;
+        font-size:68px;
 
     }
 
@@ -475,7 +475,7 @@ footer{
 
     .hero p{
 
-        font-size:22px;
+        font-size:50px;
 
     }
 
@@ -483,11 +483,11 @@ footer{
 
     .card{
 
-        padding:30px;
+        padding:60px;
 
-        margin:35px 0;
+        margin:60px 0;
 
-        box-shadow:8px 8px 0 #111;
+        box-shadow:12px 12px 0 #111;
 
     }
 
@@ -495,7 +495,7 @@ footer{
 
     .card h2{
 
-        font-size:34px;
+        font-size:58px;
 
     }
 
@@ -503,7 +503,7 @@ footer{
 
     .card h3{
 
-        font-size:28px;
+        font-size:52px;
 
     }
 
@@ -512,7 +512,7 @@ footer{
     .card p,
     .card li{
 
-        font-size:20px;
+        font-size:46px;
 
     }
 
@@ -520,9 +520,9 @@ footer{
 
     pre{
 
-        font-size:17px;
+        font-size:38px;
 
-        padding:20px;
+        padding:40px;
 
     }
 
