@@ -436,13 +436,14 @@ async function loadServerStatus() {
     const data = await res.json();
     if (!data.success) return;
 
-    const { phoenix, ourin } = data;
+    const { phoenix, ourin, ourinDeluxe } = data;
     setStatusUI('phoenix', phoenix);
     setStatusUI('ourin', ourin);
+    setStatusUI('ourinDeluxe', ourinDeluxe);
 
-    const onlineCount = (phoenix.online ? 1 : 0) + (ourin.online ? 1 : 0);
+    const onlineCount = (phoenix.online ? 1 : 0) + (ourin.online ? 1 : 0) + (ourinDeluxe.online ? 1 : 0);
     document.getElementById('statOnline').textContent = onlineCount;
-    document.getElementById('statOffline').textContent = 2 - onlineCount;
+    document.getElementById('statOffline').textContent = 3 - onlineCount;
   } catch (e) {
     console.error(e);
   }
