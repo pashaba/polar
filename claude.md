@@ -42,6 +42,8 @@ public/
 - **Splash progress**: progress bar splash screen di dashboard **ngikutin progres loading asli** (`setSplashProgress()` dipanggil manual di titik-titik fetch penting di `dashboard.js`), bukan animasi CSS timer. Kalau nambah fetch penting baru di init flow, sesuaikan juga persentasenya.
 - **Cloudflare Turnstile (captcha)**: dipasang di form login & register. Karena `login.html` butuh inject `TURNSTILE_SITE_KEY` (public, aman ditaruh di HTML) yang nilainya dari env var, route `GET /login` di server.js **bukan** `sendFile` biasa — dia baca file, `.replace()` placeholder `{{TURNSTILE_SITE_KEY}}`, baru dikirim. Kalau ubah `login.html`, jangan hapus placeholder ini. Verifikasi token captcha di server pakai `verifyTurnstile()` — kalau `TURNSTILE_SECRET_KEY` belum di-set di env, verifikasi **di-skip otomatis** (biar gak ke-lock pas development).
 - **Customer Service & Privacy Policy**: nomor WA CS (`6285715294026`) di-hardcode langsung di HTML (`dashboard.html`, `login.html`, `privacy.html`) karena itu info publik, bukan secret — sengaja gak ditaruh di env var biar gak perlu templating tambahan di semua halaman. Halaman kebijakan privasi ada di `public/privacy.html`, diakses lewat `/privacy` (clean URL, sama pola kayak `/login` & `/dashboard`).
+- **Consent privacy policy wajib**: checkbox "Saya setuju Kebijakan Privasi" wajib dicentang sebelum login/register (validasi di frontend `login.html`, DAN divalidasi ulang di backend khusus pas register — field `privacyAccepted` di body request, kalau `false`/kosong balikin 400). Timestamp consent disimpen di `polar_users.privacy_accepted_at` pas register. Kalau nanti ada halaman auth baru, jangan lupa checkbox ini + validasi backend-nya.
+- **Loading UX**: gak ada loading indicator sama sekali (bukan splash, bukan top progress bar, bukan skeleton, bukan spinner tombol) — sengaja dihapus semua atas permintaan owner. Tombol tetep di-`disable` selama request berlangsung (mencegah double-submit), tapi teks/icon-nya gak berubah. Konten langsung dirender begitu fetch selesai. **Jangan nambahin loading indicator lagi kecuali diminta eksplisit.**
 
 ## Konvensi Penting
 
@@ -63,9 +65,11 @@ Setelah login (jalur manapun), server sign JWT (`signToken()`) dan set httpOnly 
 
 Tabel utama: `polar_users`, `polar_sessions`. Kolom yang ditambahin dari skema PHP lama ada di `schema.sql` — **jalankan file ini manual di Supabase SQL editor sebelum server.js pertama kali dijalanin**, karena gak ada migration tool otomatis.
 
-Kolom penting di `polar_users`: `id, email (unique), name, avatar, coins, password_hash, auth_provider, google_id, earn_flag, created_at, updated_at`.
+Kolom penting di `polar_users`: `id, email (unique), name, avatar, coins, password_hash, auth_provider, google_id, earn_flag, created_at, updated_at, privacy_accepted_at`.
 
-`polar_sessions` sekarang direlasikan via `user_id` (bukan `fingerprint` kayak versi PHP lama).
+`polar_sessions` sekarang direlasikan via `user_id` (bukan `fingerprint` kayak versi PHP lama). Kolom `script` isinya salah satu dari: `phoenix_md`, `ourin_md`, `ourin_md_deluxe`.
+
+**Server status monitoring**: ada 3 server Pterodactyl terpisah yang di-cek (`/api/server-status`): Phoenix, Ourin, Ourin Deluxe — masing-masing punya panel/API key/UUID sendiri di env var (`PHOENIX_PANEL`/`OURIN_PANEL`/`OURIN_DELUXE_PANEL`, dst). Kalau env var panel spesifik gak diisi, fallback ke `PTERO_PANEL`. Kalau nambah script/server baru lagi ke depannya, ikutin pola yang sama: env var panel+key+uuid sendiri, tambahin ke `checkServer()` call di `/api/server-status`, tambahin card status & select-box script baru di `dashboard.html`, update `setStatusUI()` call & pembagi online/offline di `dashboard.js`.
 
 `polar_coin_logs` (tabel baru): `id, user_id, amount (+/-), reason, balance_after, created_at` — log tiap perubahan koin, dibuat otomatis lewat `logCoinTransaction()`, jangan di-insert manual dari tempat lain.
 
