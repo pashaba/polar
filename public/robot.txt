@@ -1,8 +1,26 @@
+# Polar.web.id Robots.txt
+
 User-agent: *
+
+# Public pages
 Allow: /
 Allow: /login
 Allow: /privacy
+Allow: /about/
+Allow: /blogs/
+Allow: /docs/
+
+
+# Private pages
 Disallow: /dashboard
+Disallow: /dashboard/
 Disallow: /api/
 
+
+# Prevent indexing of unnecessary files
+Disallow: /*.json$
+Disallow: /*.log$
+
+
+# Sitemap
 Sitemap: https://polar.web.id/sitemap.xml
