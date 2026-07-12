@@ -1,1 +1,490 @@
+/* ============================================================
+   POLAR PUBLIC PAGE STYLE
+   Blog / Docs / About / Changelog / Status / Security
+============================================================ */
 
+.public-page {
+    background: var(--bg-main);
+    color: var(--text-main);
+    min-height:100vh;
+}
+
+
+/* NAV PUBLIC */
+
+.public-nav {
+    position:sticky;
+    top:0;
+    z-index:100;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+
+    padding:14px 6%;
+
+    background:var(--bg-nav);
+    border-bottom:var(--border-thick);
+    box-shadow:0 5px 0 #111;
+}
+
+
+.public-logo {
+    font-size:22px;
+    font-weight:900;
+    text-transform:uppercase;
+}
+
+
+.public-logo span {
+    background:var(--orange);
+    color:white;
+    padding:3px 10px;
+    border:var(--border-thick);
+    box-shadow:var(--shadow-light);
+}
+
+
+.public-menu {
+    display:flex;
+    gap:15px;
+}
+
+
+.public-menu a {
+    color:var(--text-main);
+    text-decoration:none;
+    font-weight:800;
+    font-size:13px;
+}
+
+
+.public-menu a:hover {
+    color:var(--orange);
+}
+
+
+
+/* CONTAINER */
+
+.public-container {
+
+    width:100%;
+    max-width:1000px;
+
+    margin:auto;
+
+    padding:50px 20px;
+
+}
+
+
+
+/* HERO */
+
+.public-hero {
+
+    text-align:center;
+
+    margin-bottom:40px;
+
+}
+
+
+.public-hero h1 {
+
+    font-size:clamp(32px,7vw,55px);
+
+    font-weight:900;
+
+    text-transform:uppercase;
+
+}
+
+
+.public-hero h1 span {
+
+    background:var(--orange);
+
+    color:white;
+
+    padding:0 15px;
+
+    border:var(--border-thick);
+
+    box-shadow:var(--shadow-heavy);
+
+}
+
+
+.public-hero p {
+
+    margin-top:20px;
+
+    color:var(--text-muted);
+
+    font-weight:600;
+
+}
+
+
+
+/* ARTICLE CARD */
+
+.article-card {
+
+    background:var(--bg-card);
+
+    border:var(--border-thick);
+
+    box-shadow:var(--shadow-heavy);
+
+    padding:30px;
+
+    margin-bottom:30px;
+
+}
+
+
+
+.article-card h1,
+.article-card h2,
+.article-card h3 {
+
+    font-weight:900;
+
+    margin-bottom:15px;
+
+    text-transform:uppercase;
+
+}
+
+
+.article-card h2 {
+
+    color:var(--orange);
+
+}
+
+
+.article-card p {
+
+    color:var(--text-muted);
+
+    line-height:1.8;
+
+    margin-bottom:18px;
+
+}
+
+
+.article-card ul {
+
+    padding-left:25px;
+
+    margin-bottom:20px;
+
+}
+
+
+.article-card li {
+
+    margin-bottom:8px;
+
+    font-weight:600;
+
+}
+
+
+
+/* BLOG LIST */
+
+.blog-grid {
+
+    display:grid;
+
+    grid-template-columns:repeat(3,1fr);
+
+    gap:20px;
+
+}
+
+
+
+.blog-card {
+
+    background:var(--bg-card);
+
+    border:var(--border-thick);
+
+    box-shadow:var(--shadow-light);
+
+    padding:20px;
+
+    transition:.15s;
+
+}
+
+
+.blog-card:hover {
+
+    transform:translate(3px,3px);
+
+    box-shadow:3px 3px 0 #111;
+
+}
+
+
+.blog-card h3 {
+
+    font-size:20px;
+
+    font-weight:900;
+
+    margin-bottom:10px;
+
+}
+
+
+.blog-card p {
+
+    color:var(--text-muted);
+
+    font-size:14px;
+
+}
+
+
+
+/* BUTTON */
+
+.public-btn {
+
+    display:inline-flex;
+
+    align-items:center;
+
+    justify-content:center;
+
+    padding:12px 20px;
+
+    background:var(--orange);
+
+    color:white;
+
+    text-decoration:none;
+
+    font-weight:900;
+
+    border:var(--border-thick);
+
+    box-shadow:var(--shadow-heavy);
+
+    text-transform:uppercase;
+
+}
+
+
+.public-btn:hover {
+
+    transform:translate(3px,3px);
+
+    box-shadow:3px 3px 0 #111;
+
+}
+
+
+
+/* CHANGELOG */
+
+.changelog-item {
+
+    background:var(--bg-card);
+
+    border:var(--border-thick);
+
+    box-shadow:var(--shadow-light);
+
+    padding:20px;
+
+    margin-bottom:20px;
+
+}
+
+
+
+.changelog-version {
+
+    display:inline-block;
+
+    background:var(--orange);
+
+    color:white;
+
+    padding:5px 12px;
+
+    font-weight:900;
+
+    border:var(--border-thick);
+
+    margin-bottom:15px;
+
+}
+
+
+
+.changelog-item li {
+
+    font-weight:700;
+
+}
+
+
+
+/* STATUS */
+
+.status-box {
+
+    background:var(--bg-card);
+
+    border:var(--border-thick);
+
+    box-shadow:var(--shadow-heavy);
+
+    padding:25px;
+
+    display:flex;
+
+    justify-content:space-between;
+
+    align-items:center;
+
+}
+
+
+
+.status-online {
+
+    background:var(--green);
+
+    color:white;
+
+    padding:5px 15px;
+
+    font-weight:900;
+
+    border:var(--border-thick);
+
+}
+
+
+
+.status-offline {
+
+    background:var(--red);
+
+    color:white;
+
+    padding:5px 15px;
+
+    font-weight:900;
+
+}
+
+
+
+/* FAQ */
+
+.faq-item {
+
+    background:var(--bg-card);
+
+    border:var(--border-thick);
+
+    padding:20px;
+
+    margin-bottom:15px;
+
+}
+
+
+
+.faq-item h3 {
+
+    font-weight:900;
+
+    color:var(--orange);
+
+}
+
+
+
+.faq-item p {
+
+    margin-top:10px;
+
+    color:var(--text-muted);
+
+}
+
+
+
+/* FOOTER */
+
+.public-footer {
+
+    text-align:center;
+
+    padding:40px 20px;
+
+    color:var(--text-muted);
+
+    font-weight:700;
+
+}
+
+
+
+/* MOBILE */
+
+@media(max-width:700px){
+
+
+    .public-menu {
+
+        display:none;
+
+    }
+
+
+    .public-container {
+
+        padding:30px 15px;
+
+    }
+
+
+    .blog-grid {
+
+        grid-template-columns:1fr;
+
+    }
+
+
+    .article-card {
+
+        padding:20px;
+
+    }
+
+
+    .status-box {
+
+        flex-direction:column;
+
+        gap:15px;
+
+        text-align:center;
+
+    }
+
+}
