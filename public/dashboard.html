@@ -144,17 +144,7 @@
     <div class="grid-2" id="packageGrid"></div>
 
     <div class="section-title">⚙️ JENIS SCRIPT</div>
-    <div class="grid-3">
-      <div class="select-box active" onclick="selectScript(this)" data-script="phoenix_md" id="scriptOption-phoenix_md">
-        <i class="fas fa-robot"></i><h4>Phoenix MD</h4><p>Pterodactyl Engine</p>
-      </div>
-      <div class="select-box" onclick="selectScript(this)" data-script="ourin_md" id="scriptOption-ourin_md">
-        <i class="fas fa-microchip"></i><h4>Ourin</h4><p>Native Core</p>
-      </div>
-      <div class="select-box" onclick="selectScript(this)" data-script="ourin_md_deluxe" id="scriptOption-ourin_md_deluxe">
-        <i class="fas fa-gem"></i><h4>Ourin Deluxe</h4><p>Premium Core</p>
-      </div>
-    </div>
+    <div class="grid-3" id="scriptSelectGrid"></div>
 
     <div class="card">
       <div style="margin-bottom:10px;">
@@ -184,41 +174,7 @@
       </div>
     </div>
 
-    <div class="card" style="box-shadow:var(--shadow-heavy);">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-        <div style="display:flex;align-items:center;gap:10px;">
-          <div style="background:var(--orange);padding:8px;border:var(--border-thick);box-shadow:var(--shadow-light);"><i class="fas fa-server" style="color:#fff;font-size:14px;"></i></div>
-          <div><h3 style="font-size:14px;font-weight:900;">PHOENIX MD</h3><div style="font-size:10px;font-weight:600;color:var(--text-muted);">Pterodactyl</div></div>
-        </div>
-        <div class="badge-status" id="phoenixBadge">...</div>
-      </div>
-      <div class="spec-row"><span style="font-weight:600;color:var(--text-muted);">RAM</span><span style="font-weight:900;" id="phoenixRam">-</span></div>
-      <div class="spec-row"><span style="font-weight:600;color:var(--text-muted);">PING</span><span style="font-weight:900;" id="phoenixPing">-</span></div>
-    </div>
-
-    <div class="card" style="box-shadow:var(--shadow-heavy);">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-        <div style="display:flex;align-items:center;gap:10px;">
-          <div style="background:#111;padding:8px;border:var(--border-thick);box-shadow:var(--shadow-light);"><i class="fas fa-microchip" style="color:#fff;font-size:14px;"></i></div>
-          <div><h3 style="font-size:14px;font-weight:900;">OURIN MD V3</h3><div style="font-size:10px;font-weight:600;color:var(--text-muted);">Pterodactyl</div></div>
-        </div>
-        <div class="badge-status" id="ourinBadge">...</div>
-      </div>
-      <div class="spec-row"><span style="font-weight:600;color:var(--text-muted);">RAM</span><span style="font-weight:900;" id="ourinRam">-</span></div>
-      <div class="spec-row"><span style="font-weight:600;color:var(--text-muted);">PING</span><span style="font-weight:900;" id="ourinPing">-</span></div>
-    </div>
-
-    <div class="card" style="box-shadow:var(--shadow-heavy);">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-        <div style="display:flex;align-items:center;gap:10px;">
-          <div style="background:var(--gold);padding:8px;border:var(--border-thick);box-shadow:var(--shadow-light);"><i class="fas fa-gem" style="color:#111;font-size:14px;"></i></div>
-          <div><h3 style="font-size:14px;font-weight:900;">OURIN DELUXE</h3><div style="font-size:10px;font-weight:600;color:var(--text-muted);">Pterodactyl</div></div>
-        </div>
-        <div class="badge-status" id="ourinDeluxeBadge">...</div>
-      </div>
-      <div class="spec-row"><span style="font-weight:600;color:var(--text-muted);">RAM</span><span style="font-weight:900;" id="ourinDeluxeRam">-</span></div>
-      <div class="spec-row"><span style="font-weight:600;color:var(--text-muted);">PING</span><span style="font-weight:900;" id="ourinDeluxePing">-</span></div>
-    </div>
+    <div id="statusCardsContainer"></div>
   </div>
 
   <!-- SESSIONS -->
