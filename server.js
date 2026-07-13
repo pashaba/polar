@@ -43,24 +43,12 @@ const {
   GOOGLE_CLIENT_ID,
   GOOGLE_CLIENT_SECRET,
   GOOGLE_REDIRECT_URI,
-  PTERO_PANEL,
-  PHOENIX_PANEL,
-  PHOENIX_API_KEY,
-  PHOENIX_UUID,
-  OURIN_PANEL,
-  OURIN_API_KEY,
-  OURIN_UUID,
-  OURIN_DELUXE_PANEL,
-  OURIN_DELUXE_API_KEY,
-  OURIN_DELUXE_UUID,
   SAFELINK_URL,
   APP_URL
 } = process.env;
 
-// Kalau PHOENIX_PANEL / OURIN_PANEL / OURIN_DELUXE_PANEL gak diisi, fallback ke PTERO_PANEL (backward compatible kalau panelnya sama)
-const PHOENIX_PANEL_URL = PHOENIX_PANEL || PTERO_PANEL;
-const OURIN_PANEL_URL = OURIN_PANEL || PTERO_PANEL;
-const OURIN_DELUXE_PANEL_URL = OURIN_DELUXE_PANEL || PTERO_PANEL;
+// Catatan: konfigurasi script bot (Phoenix, Ourin, dll) SEKARANG di database (tabel polar_scripts),
+// dikelola lewat admin panel (/admin), bukan lewat env var lagi kayak sebelumnya.
 
 const MAX_SESSIONS = Number(process.env.MAX_SESSIONS || 10);
 
@@ -542,6 +530,115 @@ app.get('/api/events', authMiddleware, async (req, res) => {
 });
 
 // ============================================================
+// ADMIN — cek daftar server & UUID dari panel Pterodactyl (bantu isi form Script)
+// ============================================================
+app.post('/api/admin/check-uuid', authMiddleware, adminMiddleware, async (req, res) => {
+  try {
+    const { panelUrl, apiKey } = req.body;
+    if (!panelUrl || !apiKey) {
+      return res.status(400).json({ success: false, message: 'Panel URL & API key wajib diisi' });
+    }
+
+    const cleanPanel = panelUrl.trim().replace(/\/$/, '');
+    const r = await fetch(`${cleanPanel}/api/client`, {
+      headers: { Authorization: `Bearer ${apiKey}`, Accept: 'application/json' }
+    });
+
+    if (!r.ok) {
+      const text = await r.text();
+      return res.status(400).json({ success: false, message: `Gagal konek ke panel (HTTP ${r.status}). Cek lagi Panel URL & API Key-nya.` });
+    }
+
+    const data = await r.json();
+    const servers = (data.data || []).map(s => ({
+      name: s.attributes.name,
+      identifier: s.attributes.identifier,
+      uuid: s.attributes.uuid,
+      node: s.attributes.node,
+      suspended: s.attributes.is_suspended
+    }));
+
+    res.json({ success: true, servers });
+  } catch (e) {
+    res.status(500).json({ success: false, message: 'Gagal konek ke panel: ' + e.message });
+  }
+});
+
+// ============================================================
+// ADMIN — kelola script bot (Phoenix, Ourin, dll)
+// ============================================================
+app.get('/api/admin/scripts', authMiddleware, adminMiddleware, async (req, res) => {
+  try {
+    const rows = await sb('GET', 'polar_scripts?order=sort_order.asc');
+    res.json({ success: true, scripts: rows });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+app.post('/api/admin/scripts', authMiddleware, adminMiddleware, async (req, res) => {
+  try {
+    const { scriptKey, displayName, subtitle, icon, panelUrl, apiKey, serverUuid, sortOrder } = req.body;
+    if (!scriptKey || !displayName || !panelUrl || !apiKey || !serverUuid) {
+      return res.status(400).json({ success: false, message: 'Script key, nama, panel URL, API key, dan UUID wajib diisi' });
+    }
+
+    const normalizedKey = scriptKey.trim().toLowerCase().replace(/[^a-z0-9_]/g, '_');
+
+    const existing = await sb('GET', `polar_scripts?script_key=eq.${encodeURIComponent(normalizedKey)}&select=id`);
+    if (existing.length > 0) {
+      return res.status(409).json({ success: false, message: 'Script key ini udah dipakai' });
+    }
+
+    const [created] = await sb('POST', 'polar_scripts', {
+      script_key: normalizedKey,
+      display_name: displayName.trim(),
+      subtitle: subtitle || '',
+      icon: (icon && icon.trim()) || 'fa-robot',
+      panel_url: panelUrl.trim(),
+      api_key: apiKey.trim(),
+      server_uuid: serverUuid.trim(),
+      active: true,
+      sort_order: Number(sortOrder) || 0,
+      created_at: Date.now()
+    });
+
+    res.json({ success: true, script: created });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+app.patch('/api/admin/scripts/:id', authMiddleware, adminMiddleware, async (req, res) => {
+  try {
+    const { displayName, subtitle, icon, panelUrl, apiKey, serverUuid, active, sortOrder } = req.body;
+    const patch = {};
+    if (displayName !== undefined) patch.display_name = displayName;
+    if (subtitle !== undefined) patch.subtitle = subtitle;
+    if (icon !== undefined) patch.icon = icon;
+    if (panelUrl !== undefined) patch.panel_url = panelUrl;
+    if (apiKey !== undefined) patch.api_key = apiKey;
+    if (serverUuid !== undefined) patch.server_uuid = serverUuid;
+    if (active !== undefined) patch.active = !!active;
+    if (sortOrder !== undefined) patch.sort_order = Number(sortOrder) || 0;
+
+    await sb('PATCH', `polar_scripts?id=eq.${req.params.id}`, patch);
+    res.json({ success: true });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+app.delete('/api/admin/scripts/:id', authMiddleware, adminMiddleware, async (req, res) => {
+  try {
+    await sb('DELETE', `polar_scripts?id=eq.${req.params.id}`);
+    res.json({ success: true });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+// ============================================================
 // ADMIN — kelola event
 // ============================================================
 app.get('/api/admin/events', authMiddleware, adminMiddleware, async (req, res) => {
@@ -727,26 +824,50 @@ async function checkServer(panelUrl, uuid, apiKey) {
   }
 }
 
+// ============================================================
+// SCRIPTS (bot types — Phoenix, Ourin, dll. Dikelola admin lewat tabel polar_scripts)
+// ============================================================
+
+// Data buat pilihan script di form claim (safe fields aja, gak ada panel_url/api_key/uuid)
+app.get('/api/scripts', authMiddleware, async (req, res) => {
+  try {
+    const rows = await sb('GET', 'polar_scripts?active=eq.true&order=sort_order.asc&select=id,script_key,display_name,subtitle,icon');
+    res.json({ success: true, scripts: rows });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+// Status real-time semua script aktif (dipanggil dashboard buat halaman Status)
 app.get('/api/server-status', async (req, res) => {
-  const [phoenix, ourin, ourinDeluxe] = await Promise.all([
-    checkServer(PHOENIX_PANEL_URL, PHOENIX_UUID, PHOENIX_API_KEY),
-    checkServer(OURIN_PANEL_URL, OURIN_UUID, OURIN_API_KEY),
-    checkServer(OURIN_DELUXE_PANEL_URL, OURIN_DELUXE_UUID, OURIN_DELUXE_API_KEY)
-  ]);
-  res.json({ success: true, phoenix, ourin, ourinDeluxe });
+  try {
+    const rows = await sb('GET', 'polar_scripts?active=eq.true&order=sort_order.asc');
+    const scripts = await Promise.all(rows.map(async (s) => {
+      const status = await checkServer(s.panel_url, s.server_uuid, s.api_key);
+      return {
+        script_key: s.script_key,
+        display_name: s.display_name,
+        icon: s.icon,
+        ...status
+      };
+    }));
+    res.json({ success: true, scripts });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
 });
 
 // Dipakai buat validasi pas claim session — mapping nama script ke status server-nya
+// Dipakai buat validasi pas claim session — ambil config panel dari database (tabel polar_scripts)
 async function getScriptStatus(script) {
-  switch (script) {
-    case 'phoenix_md':
-      return checkServer(PHOENIX_PANEL_URL, PHOENIX_UUID, PHOENIX_API_KEY);
-    case 'ourin_md':
-      return checkServer(OURIN_PANEL_URL, OURIN_UUID, OURIN_API_KEY);
-    case 'ourin_md_deluxe':
-      return checkServer(OURIN_DELUXE_PANEL_URL, OURIN_DELUXE_UUID, OURIN_DELUXE_API_KEY);
-    default:
-      return { online: false };
+  try {
+    const rows = await sb('GET', `polar_scripts?script_key=eq.${encodeURIComponent(script)}&select=*`);
+    const scriptRow = rows[0];
+    if (!scriptRow || !scriptRow.active) return { online: false };
+    return checkServer(scriptRow.panel_url, scriptRow.server_uuid, scriptRow.api_key);
+  } catch (e) {
+    console.error('getScriptStatus error:', e.message);
+    return { online: false };
   }
 }
 
