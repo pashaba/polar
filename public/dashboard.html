@@ -84,6 +84,7 @@
   <a href="#" class="nav-link" onclick="navTo('claim'); toggleMenu();"><i class="fas fa-download"></i> CLAIM</a>
   <a href="#" class="nav-link" onclick="navTo('sessions'); toggleMenu();"><i class="fas fa-robot"></i> SESSIONS</a>
   <a href="#" class="nav-link" onclick="navTo('history'); toggleMenu();"><i class="fas fa-clock-rotate-left"></i> RIWAYAT KOIN</a>
+  <a href="#" class="nav-link" onclick="navTo('redeem'); toggleMenu();"><i class="fas fa-ticket"></i> REDEEM KODE</a>
   <a href="#" class="nav-link" onclick="navTo('profile'); toggleMenu();"><i class="fas fa-user"></i> PROFILE</a>
   <a href="#" class="nav-link" onclick="earnCoin()" style="background:var(--gold);"><i class="fas fa-coins" style="color:#111;"></i> EARN POLAR COIN</a>
   <a href="https://wa.me/6285715294026" target="_blank" class="nav-link" style="background:var(--green);color:#fff;"><i class="fab fa-whatsapp"></i> CUSTOMER SERVICE</a>
@@ -225,6 +226,20 @@
       <p style="color:var(--text-muted);font-size:13px;font-weight:500;">50 transaksi terakhir</p>
     </div>
     <div class="card" id="historyCard"><div id="historyList"></div></div>
+  </div>
+
+  <!-- REDEEM -->
+  <div id="sec-redeem" class="section">
+    <div style="text-align:center;margin-bottom:16px;">
+      <div class="slot-badge" style="background:var(--gold);color:#111;"><i class="fas fa-ticket"></i> PUNYA KODE?</div>
+      <h1 style="font-weight:900;font-size:clamp(26px,6vw,36px);text-transform:uppercase;">REDEEM <span style="background:var(--orange);color:#fff;padding:0 12px;transform:skew(-6deg);display:inline-block;border:var(--border-thick);box-shadow:var(--shadow-light);">KODE</span></h1>
+      <p style="color:var(--text-muted);font-size:13px;font-weight:500;">Masukkan kode promo/giveaway buat dapetin Polar Coin gratis</p>
+    </div>
+    <div class="card">
+      <label style="font-size:11px;font-weight:800;color:var(--text-muted);display:block;margin-bottom:4px;text-transform:uppercase;">Kode Redeem</label>
+      <input type="text" id="redeemCodeInput" placeholder="Contoh: POLAR2026" style="width:100%;padding:12px;background:#f0f0f0;border:var(--border-thick);box-shadow:inset 2px 2px 0px 0px #111;color:#111;font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px;">
+      <button class="btn btn-orange btn-full" id="redeemBtn" onclick="redeemCode()"><i class="fas fa-ticket"></i> REDEEM SEKARANG</button>
+    </div>
   </div>
 
   <!-- PROFILE -->
