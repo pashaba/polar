@@ -1,67 +1,89 @@
 <!DOCTYPE html>
 <html lang="id">
-
 <head>
-
-<title>404 - Halaman Tidak Ditemukan | Polar.web.id</title>
-
-<meta name="description" content="Halaman yang kamu cari tidak ditemukan di Polar.web.id.">
-
-<meta property="og:title" content="404 - Polar.web.id">
-<meta property="og:description" content="Halaman tidak ditemukan. Kembali ke Polar.web.id">
-<meta property="og:image" content="https://polar.web.id/icons/icon-512.png">
-
-
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>404 — Halaman Gak Ketemu | Polar.web.id</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <link rel="icon" href="/icons/icon-192.png">
-
-<link rel="stylesheet" href="/style.css">
-
+<link rel="stylesheet" href="style.css">
+<script>
+  (function() {
+    const saved = localStorage.getItem('polar_theme');
+    const theme = saved || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    if (theme === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+  })();
+</script>
+<style>
+  .notfound-wrap {
+    min-height: calc(100vh - 60px); display: flex; align-items: center; justify-content: center;
+    padding: 24px 16px; background-image: repeating-linear-gradient(45deg, rgba(0,0,0,0.02) 0px, rgba(0,0,0,0.02) 10px, transparent 10px, transparent 20px);
+  }
+  .notfound-card {
+    background: var(--bg-card); border: var(--border-thick); box-shadow: var(--shadow-heavy);
+    max-width: 420px; width: 100%; padding: 36px 28px; text-align: center; position: relative;
+    animation: slideUp .4s ease;
+  }
+  .notfound-card::before {
+    content: ''; position: absolute; top: -6px; left: 12px; right: 12px; height: 6px; background: var(--orange);
+  }
+  .notfound-bot {
+    width: 84px; height: 84px; background: #111; border: var(--border-thick); box-shadow: var(--shadow-light);
+    display: inline-flex; align-items: center; justify-content: center; font-size: 40px; color: var(--orange);
+    margin-bottom: 18px; position: relative; animation: notfoundFloat 2.4s ease-in-out infinite;
+  }
+  .notfound-bot::after {
+    content: '!'; position: absolute; top: -12px; right: -12px; background: var(--red); color: #fff;
+    width: 28px; height: 28px; border: var(--border-thick); box-shadow: var(--shadow-light);
+    display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 15px;
+    transform: rotate(8deg);
+  }
+  @keyframes notfoundFloat { 0%,100% { transform: translateY(0) rotate(0deg); } 50% { transform: translateY(-8px) rotate(-3deg); } }
+  .notfound-code {
+    font-size: 56px; font-weight: 900; letter-spacing: -2px; line-height: 1;
+    display: inline-block; background: var(--orange); color: #fff; padding: 2px 18px; margin-bottom: 14px;
+    transform: skew(-6deg); border: var(--border-thick); box-shadow: var(--shadow-light);
+  }
+  .notfound-card h2 { font-size: 19px; font-weight: 900; text-transform: uppercase; margin-bottom: 8px; }
+  .notfound-card p { color: var(--text-muted); font-size: 13px; font-weight: 500; line-height: 1.6; margin-bottom: 24px; }
+  .notfound-actions { display: flex; flex-direction: column; gap: 10px; }
+  .notfound-cs { margin-top: 18px; padding-top: 16px; border-top: 2px dashed #111; font-size: 11.5px; font-weight: 600; color: var(--text-muted); }
+  .notfound-cs a { color: var(--green); font-weight: 800; text-decoration: none; }
+</style>
 </head>
-
-
 <body>
 
+<nav class="navbar">
+  <div class="nav-brand"><span class="brand-icon">✦</span> POLAR.WEB.ID</div>
+  <button class="theme-toggle-btn" onclick="toggleTheme()"><i class="fas fa-moon" id="themeIcon"></i></button>
+</nav>
 
-<main style="text-align:center;padding:80px 20px;">
+<div class="notfound-wrap">
+  <div class="notfound-card">
+    <div class="notfound-bot"><i class="fas fa-robot"></i></div>
+    <div class="notfound-code">404</div>
+    <h2>Halaman Gak Ketemu</h2>
+    <p>Bot-nya udah nyari kemana-mana tapi halaman ini emang gak ada, atau udah dipindah. Yuk balik ke tempat yang bener.</p>
+    <div class="notfound-actions">
+      <a href="/dashboard" class="btn btn-orange btn-full"><i class="fas fa-house"></i> Ke Dashboard</a>
+      <a href="/login" class="btn btn-white btn-full"><i class="fas fa-right-to-bracket"></i> Ke Halaman Login</a>
+    </div>
+    <div class="notfound-cs">
+      Ngerasa ini seharusnya ada? <a href="https://wa.me/6285715294026" target="_blank">Kabarin CS kami <i class="fab fa-whatsapp"></i></a>
+    </div>
+  </div>
+</div>
 
-
-<img 
-src="/icons/icon-512.png"
-width="120"
-alt="Polar.web.id">
-
-
-<h1>
-404
-</h1>
-
-
-<h2>
-Halaman Tidak Ditemukan
-</h2>
-
-
-<p>
-Maaf, halaman yang kamu cari tidak tersedia atau sudah dipindahkan.
-</p>
-
-
-<a href="/">
-Kembali ke Beranda
-</a>
-
-
-<br><br>
-
-
-<a href="/docs/">
-Buka Dokumentasi
-</a>
-
-
-</main>
-
-
+<script>
+  function toggleTheme() {
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    if (isDark) { document.documentElement.removeAttribute('data-theme'); localStorage.setItem('polar_theme','light'); }
+    else { document.documentElement.setAttribute('data-theme','dark'); localStorage.setItem('polar_theme','dark'); }
+    document.getElementById('themeIcon').className = isDark ? 'fas fa-moon' : 'fas fa-sun';
+  }
+  document.getElementById('themeIcon').className = document.documentElement.getAttribute('data-theme') === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
+</script>
 </body>
-
 </html>
