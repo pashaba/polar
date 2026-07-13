@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>Polar.web.id — Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="stylesheet" href="style.css">
+<script>
+  (function() {
+    const saved = localStorage.getItem('polar_theme');
+    const theme = saved || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    if (theme === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+  })();
+</script>
+<style>
+  .admin-wrap { max-width: 720px; margin: 0 auto; padding: 20px 16px 60px; }
+  .admin-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .admin-table th, .admin-table td { text-align: left; padding: 8px 6px; border-bottom: 2px dashed #111; }
+  .admin-table th { font-weight: 900; text-transform: uppercase; font-size: 10px; color: var(--text-muted); }
+  .admin-table td { font-weight: 600; }
+  .code-mono { font-family: monospace; font-weight: 900; letter-spacing: 0.5px; }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+  .form-row.full { grid-template-columns: 1fr; }
+  .form-row label { font-size: 10px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; display: block; margin-bottom: 4px; }
+  .form-row input { width: 100%; padding: 10px; background: #f0f0f0; border: var(--border-thick); box-shadow: inset 2px 2px 0px 0px #111; font-size: 13px; font-weight: 600; color: #111; }
+  [data-theme="dark"] .form-row input { background: #2a2a2a; color: #f2f2f2; box-shadow: inset 2px 2px 0px 0px #000; }
+  .denied-box { text-align: center; padding: 60px 20px; }
+  .denied-box i { font-size: 48px; color: var(--red); margin-bottom: 12px; }
+</style>
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="nav-brand"><span class="brand-icon">✦</span> POLAR ADMIN</div>
+  <button class="theme-toggle-btn" onclick="toggleTheme()"><i class="fas fa-moon" id="themeIcon"></i></button>
+</nav>
+
+<div id="checkingBox" class="admin-wrap" style="text-align:center;padding:60px 20px;">
+  <p style="font-weight:700;color:var(--text-muted);">Memeriksa akses...</p>
+</div>
+
+<div id="deniedBox" class="admin-wrap denied-box" style="display:none;">
+  <i class="fas fa-ban"></i>
+  <h2 style="font-weight:900;font-size:20px;text-transform:uppercase;">Akses Ditolak</h2>
+  <p style="color:var(--text-muted);font-size:13px;margin-top:6px;">Halaman ini cuma buat admin.</p>
+  <a href="/dashboard" class="btn btn-orange" style="margin-top:16px;">Kembali ke Dashboard</a>
+</div>
+
+<div id="adminContent" class="admin-wrap" style="display:none;">
+  <h1 style="font-weight:900;font-size:24px;text-transform:uppercase;margin-bottom:4px;">Kelola Kode Redeem</h1>
+  <p style="color:var(--text-muted);font-size:13px;margin-bottom:20px;">Buat kode baru buat dibagiin ke user (giveaway, promo, dll)</p>
+
+  <div class="card">
+    <div class="section-title">➕ BUAT KODE BARU</div>
+    <div class="form-row">
+      <div>
+        <label>Kode</label>
+        <input type="text" id="newCode" placeholder="Contoh: POLAR2026" style="text-transform:uppercase;">
+      </div>
+      <div>
+        <label>Jumlah Coin</label>
+        <input type="number" id="newCoinValue" placeholder="5" min="1">
+      </div>
+    </div>
+    <div class="form-row">
+      <div>
+        <label>Maks. Pemakaian</label>
+        <input type="number" id="newMaxUses" placeholder="1" min="1" value="1">
+      </div>
+      <div>
+        <label>Kadaluarsa (opsional)</label>
+        <input type="date" id="newExpiresAt">
+      </div>
+    </div>
+    <button class="btn btn-orange btn-full" id="createCodeBtn" onclick="createCode()"><i class="fas fa-plus"></i> Buat Kode</button>
+  </div>
+
+  <div class="card">
+    <div class="section-title">📋 DAFTAR KODE</div>
+    <div style="overflow-x:auto;">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>Kode</th>
+            <th>Coin</th>
+            <th>Terpakai</th>
+            <th>Status</th>
+            <th>Aksi</th>
+          </tr>
+        </thead>
+        <tbody id="codesTableBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+function toggleTheme() {
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  if (isDark) { document.documentElement.removeAttribute('data-theme'); localStorage.setItem('polar_theme','light'); }
+  else { document.documentElement.setAttribute('data-theme','dark'); localStorage.setItem('polar_theme','dark'); }
+  document.getElementById('themeIcon').className = isDark ? 'fas fa-moon' : 'fas fa-sun';
+}
+document.getElementById('themeIcon').className = document.documentElement.getAttribute('data-theme') === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
+
+function showToast(msg, type = 'info') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast ' + type;
+  t.style.display = 'block';
+  clearTimeout(t._timeout);
+  t._timeout = setTimeout(() => { t.style.display = 'none'; }, 4000);
+}
+
+async function checkAdminAccess() {
+  try {
+    const res = await fetch('/api/me', { credentials: 'include' });
+    if (res.status === 401) { window.location.href = '/login'; return; }
+    const data = await res.json();
+    if (!data.success || !data.user.is_admin) {
+      document.getElementById('checkingBox').style.display = 'none';
+      document.getElementById('deniedBox').style.display = 'block';
+      return;
+    }
+    document.getElementById('checkingBox').style.display = 'none';
+    document.getElementById('adminContent').style.display = 'block';
+    loadCodes();
+  } catch (e) {
+    window.location.href = '/login';
+  }
+}
+
+async function loadCodes() {
+  try {
+    const res = await fetch('/api/admin/codes', { credentials: 'include' });
+    const data = await res.json();
+    if (!data.success) return;
+    renderCodes(data.codes);
+  } catch (e) {
+    console.error(e);
+  }
+}
+
+function renderCodes(codes) {
+  const tbody = document.getElementById('codesTableBody');
+  if (!codes || codes.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:16px;color:var(--text-muted);">Belum ada kode</td></tr>';
+    return;
+  }
+  tbody.innerHTML = codes.map(c => {
+    const expired = c.expires_at && Date.now() > Number(c.expires_at);
+    const maxedOut = c.used_count >= c.max_uses;
+    const statusText = !c.active ? 'Nonaktif' : expired ? 'Expired' : maxedOut ? 'Habis' : 'Aktif';
+    const statusColor = statusText === 'Aktif' ? 'var(--green)' : 'var(--red)';
+    return `
+      <tr>
+        <td class="code-mono">${c.code}</td>
+        <td>🪙 ${c.coin_value}</td>
+        <td>${c.used_count}/${c.max_uses}</td>
+        <td style="color:${statusColor};font-weight:800;">${statusText}</td>
+        <td>
+          <button class="btn btn-sm ${c.active ? 'btn-danger' : 'btn-success'}" onclick="toggleCode(${c.id}, ${!c.active})">
+            ${c.active ? 'Nonaktifin' : 'Aktifin'}
+          </button>
+          <button class="btn btn-sm btn-danger" onclick="deleteCode(${c.id}, '${c.code}')" style="margin-top:4px;"><i class="fas fa-trash"></i></button>
+        </td>
+      </tr>`;
+  }).join('');
+}
+
+async function createCode() {
+  const code = document.getElementById('newCode').value.trim();
+  const coinValue = document.getElementById('newCoinValue').value;
+  const maxUses = document.getElementById('newMaxUses').value || 1;
+  const expiresAt = document.getElementById('newExpiresAt').value;
+
+  if (!code || !coinValue) {
+    showToast('❌ Kode & jumlah coin wajib diisi', 'error');
+    return;
+  }
+
+  const btn = document.getElementById('createCodeBtn');
+  btn.disabled = true;
+
+  try {
+    const res = await fetch('/api/admin/codes', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ code, coinValue, maxUses, expiresAt: expiresAt || null })
+    });
+    const data = await res.json();
+    if (!data.success) {
+      showToast('❌ ' + data.message, 'error');
+      return;
+    }
+    showToast('✅ Kode berhasil dibuat!', 'success');
+    document.getElementById('newCode').value = '';
+    document.getElementById('newCoinValue').value = '';
+    document.getElementById('newMaxUses').value = '1';
+    document.getElementById('newExpiresAt').value = '';
+    loadCodes();
+  } catch (e) {
+    showToast('❌ Gagal bikin kode', 'error');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function toggleCode(id, newActive) {
+  try {
+    await fetch('/api/admin/codes/' + id, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ active: newActive })
+    });
+    loadCodes();
+  } catch (e) {
+    showToast('❌ Gagal update kode', 'error');
+  }
+}
+
+async function deleteCode(id, code) {
+  if (!confirm(`Hapus kode ${code}?`)) return;
+  try {
+    await fetch('/api/admin/codes/' + id, { method: 'DELETE', credentials: 'include' });
+    showToast('✅ Kode dihapus', 'success');
+    loadCodes();
+  } catch (e) {
+    showToast('❌ Gagal hapus kode', 'error');
+  }
+}
+
+checkAdminAccess();
+</script>
+</body>
+</html>
