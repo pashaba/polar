@@ -12,6 +12,7 @@ app.use(express.json());
 app.use(cookieParser());
 app.use(cors({ origin: process.env.APP_URL || true, credentials: true }));
 app.use(express.static(path.join(__dirname, 'public')));
+
 // ============================================================
 // CLEAN URL ROUTES (gak perlu .html)
 // ============================================================
@@ -28,6 +29,8 @@ app.get('/login', (req, res) => {
 app.get('/privacy', (req, res) => res.sendFile(path.join(__dirname, 'public', 'privacy.html')));
 
 app.get('/privacy.html', (req, res) => res.redirect(301, '/privacy'));
+
+app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin.html')));
 
 // Redirect permanen kalau ada yang masih akses .html langsung
 app.get('/dashboard.html', (req, res) => res.redirect(301, '/dashboard'));
@@ -97,7 +100,8 @@ function sanitizeUser(u) {
     email: u.email,
     avatar: u.avatar,
     coins: u.coins,
-    auth_provider: u.auth_provider
+    auth_provider: u.auth_provider,
+    is_admin: !!u.is_admin
   };
 }
 
@@ -169,6 +173,18 @@ function authMiddleware(req, res, next) {
     next();
   } catch {
     return res.status(401).json({ success: false, message: 'Session tidak valid, silakan login ulang' });
+  }
+}
+
+async function adminMiddleware(req, res, next) {
+  try {
+    const user = await getUserById(req.user.uid);
+    if (!user || !user.is_admin) {
+      return res.status(403).json({ success: false, message: 'Akses ditolak, khusus admin' });
+    }
+    next();
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
   }
 }
 
@@ -409,6 +425,109 @@ app.get('/api/coins/history', authMiddleware, async (req, res) => {
 });
 
 // ============================================================
+// REDEEM CODE
+// ============================================================
+app.post('/api/redeem', authMiddleware, async (req, res) => {
+  try {
+    let { code } = req.body;
+    if (!code || !code.trim()) {
+      return res.status(400).json({ success: false, message: 'Masukkan kode redeem dulu' });
+    }
+    code = code.trim().toUpperCase();
+
+    const rows = await sb('GET', `polar_redeem_codes?code=eq.${encodeURIComponent(code)}&select=*`);
+    const codeRow = rows[0];
+
+    if (!codeRow || !codeRow.active) {
+      return res.status(400).json({ success: false, message: 'Kode gak valid atau udah gak aktif' });
+    }
+    if (codeRow.expires_at && Date.now() > Number(codeRow.expires_at)) {
+      return res.status(400).json({ success: false, message: 'Kode udah kadaluarsa' });
+    }
+    if (codeRow.used_count >= codeRow.max_uses) {
+      return res.status(400).json({ success: false, message: 'Kode udah mencapai batas pemakaian' });
+    }
+
+    const alreadyUsed = await sb('GET', `polar_redeem_logs?user_id=eq.${req.user.uid}&code_id=eq.${codeRow.id}&select=id`);
+    if (alreadyUsed.length > 0) {
+      return res.status(400).json({ success: false, message: 'Kamu udah pernah pakai kode ini' });
+    }
+
+    const user = await getUserById(req.user.uid);
+    const newCoins = (user.coins || 0) + Number(codeRow.coin_value);
+
+    await sb('PATCH', `polar_users?id=eq.${user.id}`, { coins: newCoins });
+    await sb('POST', 'polar_redeem_logs', { user_id: user.id, code_id: codeRow.id, redeemed_at: Date.now() });
+    await sb('PATCH', `polar_redeem_codes?id=eq.${codeRow.id}`, { used_count: codeRow.used_count + 1 });
+    await logCoinTransaction(user.id, Number(codeRow.coin_value), `redeem_code:${code}`, newCoins);
+
+    res.json({ success: true, coins: newCoins, coinsAdded: Number(codeRow.coin_value) });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+// ============================================================
+// ADMIN — kelola kode redeem
+// ============================================================
+app.get('/api/admin/codes', authMiddleware, adminMiddleware, async (req, res) => {
+  try {
+    const rows = await sb('GET', 'polar_redeem_codes?order=created_at.desc');
+    res.json({ success: true, codes: rows });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+app.post('/api/admin/codes', authMiddleware, adminMiddleware, async (req, res) => {
+  try {
+    let { code, coinValue, maxUses, expiresAt } = req.body;
+    if (!code || !coinValue) {
+      return res.status(400).json({ success: false, message: 'Kode & nilai koin wajib diisi' });
+    }
+    code = code.trim().toUpperCase();
+
+    const existing = await sb('GET', `polar_redeem_codes?code=eq.${encodeURIComponent(code)}&select=id`);
+    if (existing.length > 0) {
+      return res.status(409).json({ success: false, message: 'Kode ini udah ada' });
+    }
+
+    const [created] = await sb('POST', 'polar_redeem_codes', {
+      code,
+      coin_value: Number(coinValue),
+      max_uses: Number(maxUses) || 1,
+      used_count: 0,
+      expires_at: expiresAt ? new Date(expiresAt).getTime() : null,
+      active: true,
+      created_at: Date.now()
+    });
+
+    res.json({ success: true, code: created });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+app.patch('/api/admin/codes/:id', authMiddleware, adminMiddleware, async (req, res) => {
+  try {
+    const { active } = req.body;
+    await sb('PATCH', `polar_redeem_codes?id=eq.${req.params.id}`, { active: !!active });
+    res.json({ success: true });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+app.delete('/api/admin/codes/:id', authMiddleware, adminMiddleware, async (req, res) => {
+  try {
+    await sb('DELETE', `polar_redeem_codes?id=eq.${req.params.id}`);
+    res.json({ success: true });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+// ============================================================
 // SESSIONS (claim / list / delete bot)
 // ============================================================
 app.get('/api/sessions', authMiddleware, async (req, res) => {
@@ -511,6 +630,13 @@ async function getScriptStatus(script) {
       return { online: false };
   }
 }
+
+// ============================================================
+// 404 — taruh paling bawah, nangkep semua route yang gak ke-match di atas
+// ============================================================
+app.use((req, res) => {
+  res.status(404).sendFile(path.join(__dirname, 'public', '404.html'));
+});
 
 const PORT = process.env.PORT || 3000;
 
