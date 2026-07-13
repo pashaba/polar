@@ -80,6 +80,7 @@
     <button class="sidebar-close" onclick="toggleMenu()"><i class="fas fa-times"></i></button>
   </div>
   <a href="#" class="nav-link" onclick="navTo('home'); toggleMenu();"><i class="fas fa-home"></i> HOME</a>
+  <a href="#" class="nav-link" onclick="navTo('event'); toggleMenu();"><i class="fas fa-bullhorn"></i> EVENT</a>
   <a href="#" class="nav-link" onclick="navTo('status'); toggleMenu();"><i class="fas fa-server"></i> STATUS</a>
   <a href="#" class="nav-link" onclick="navTo('claim'); toggleMenu();"><i class="fas fa-download"></i> CLAIM</a>
   <a href="#" class="nav-link" onclick="navTo('sessions'); toggleMenu();"><i class="fas fa-robot"></i> SESSIONS</a>
@@ -105,6 +106,17 @@
         <button class="btn btn-white" onclick="navTo('status')">LIHAT STATUS <i class="fas fa-arrow-right"></i></button>
       </div>
     </div>
+    <div id="homeEventTeaser"></div>
+  </div>
+
+  <!-- EVENT -->
+  <div id="sec-event" class="section">
+    <div style="text-align:center;margin-bottom:16px;">
+      <div class="slot-badge" style="background:var(--gold);color:#111;"><i class="fas fa-bullhorn"></i> INFO TERBARU</div>
+      <h1 style="font-weight:900;font-size:clamp(26px,6vw,36px);text-transform:uppercase;">EVENT & <span style="background:var(--orange);color:#fff;padding:0 12px;transform:skew(-6deg);display:inline-block;border:var(--border-thick);box-shadow:var(--shadow-light);">PROMO</span></h1>
+      <p style="color:var(--text-muted);font-size:13px;font-weight:500;">Jangan sampai ketinggalan</p>
+    </div>
+    <div id="eventList"></div>
   </div>
 
   <!-- CLAIM -->
