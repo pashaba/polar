@@ -15,6 +15,70 @@ const PACKAGES = [
 ];
 
 // ============================================================
+// EVENTS
+// ============================================================
+async function loadEvents() {
+  try {
+    const res = await fetch('/api/events', { credentials: 'include' });
+    const data = await res.json();
+    if (!data.success) return;
+    renderEvents(data.events);
+    renderHomeEventTeaser(data.events);
+  } catch (e) {
+    console.error(e);
+  }
+}
+
+function formatEventDate(ts) {
+  if (!ts) return '';
+  return new Date(Number(ts)).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' });
+}
+
+function renderEvents(events) {
+  const list = document.getElementById('eventList');
+  if (!list) return;
+
+  if (!events || events.length === 0) {
+    list.innerHTML = `
+      <div class="card" style="text-align:center;padding:40px 16px;">
+        <div style="font-size:48px;margin-bottom:12px;opacity:.3;">📢</div>
+        <h3 style="font-weight:900;font-size:20px;">Belum Ada Event</h3>
+        <p style="color:var(--text-muted);font-size:13px;font-weight:500;margin-top:4px;">Pantau terus, event baru bakal muncul di sini</p>
+      </div>`;
+    return;
+  }
+
+  list.innerHTML = events.map(ev => {
+    const dateRange = ev.event_date
+      ? `${formatEventDate(ev.event_date)}${ev.end_date ? ' – ' + formatEventDate(ev.end_date) : ''}`
+      : (ev.end_date ? `Berakhir ${formatEventDate(ev.end_date)}` : '');
+
+    return `
+      <div class="event-card">
+        ${ev.thumbnail_url ? `<img src="${ev.thumbnail_url}" class="event-card-thumb" alt="${ev.title}" onerror="this.style.display='none'">` : ''}
+        <div class="event-card-body">
+          <span class="event-card-badge">🔥 EVENT</span>
+          <h3>${ev.title}</h3>
+          ${dateRange ? `<div class="event-card-date"><i class="fas fa-calendar"></i> ${dateRange}</div>` : ''}
+          ${ev.description ? `<p>${ev.description}</p>` : ''}
+          ${ev.link_url ? `<a href="${ev.link_url}" target="_blank" class="btn btn-orange btn-full">${ev.link_label || 'Lihat Event'} <i class="fas fa-arrow-up-right-from-square"></i></a>` : ''}
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function renderHomeEventTeaser(events) {
+  const teaser = document.getElementById('homeEventTeaser');
+  if (!teaser) return;
+  if (!events || events.length === 0) { teaser.innerHTML = ''; return; }
+  teaser.innerHTML = `
+    <div class="event-teaser-banner" onclick="navTo('event')">
+      <i class="fas fa-bullhorn"></i>
+      <span>Ada ${events.length} event baru! Tap buat lihat detailnya →</span>
+    </div>`;
+}
+
+// ============================================================
 // CHANNEL POPUP (ajakan join saluran WA)
 // ============================================================
 const CHANNEL_POPUP_COOLDOWN_DAYS = 7;
@@ -43,6 +107,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   renderPackages();
   await Promise.all([loadSessions(), loadServerStatus()]);
   loadCoinHistory();
+  loadEvents();
   checkEarnCoinReturn();
   maybeShowChannelPopup();
   setInterval(loadMe, 30000);
