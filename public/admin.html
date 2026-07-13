@@ -16,19 +16,33 @@
   })();
 </script>
 <style>
-  .admin-wrap { max-width: 720px; margin: 0 auto; padding: 20px 16px 60px; }
+  .admin-wrap { max-width: 760px; margin: 0 auto; padding: 20px 16px 60px; }
   .admin-table { width: 100%; border-collapse: collapse; font-size: 12px; }
-  .admin-table th, .admin-table td { text-align: left; padding: 8px 6px; border-bottom: 2px dashed #111; }
+  .admin-table th, .admin-table td { text-align: left; padding: 8px 6px; border-bottom: 2px dashed #111; vertical-align: top; }
   .admin-table th { font-weight: 900; text-transform: uppercase; font-size: 10px; color: var(--text-muted); }
   .admin-table td { font-weight: 600; }
   .code-mono { font-family: monospace; font-weight: 900; letter-spacing: 0.5px; }
   .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
   .form-row.full { grid-template-columns: 1fr; }
   .form-row label { font-size: 10px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; display: block; margin-bottom: 4px; }
-  .form-row input { width: 100%; padding: 10px; background: #f0f0f0; border: var(--border-thick); box-shadow: inset 2px 2px 0px 0px #111; font-size: 13px; font-weight: 600; color: #111; }
-  [data-theme="dark"] .form-row input { background: #2a2a2a; color: #f2f2f2; box-shadow: inset 2px 2px 0px 0px #000; }
+  .form-row input, .form-row textarea { width: 100%; padding: 10px; background: #f0f0f0; border: var(--border-thick); box-shadow: inset 2px 2px 0px 0px #111; font-size: 13px; font-weight: 600; color: #111; font-family: 'Space Grotesk', sans-serif; }
+  .form-row textarea { resize: vertical; min-height: 60px; }
+  [data-theme="dark"] .form-row input, [data-theme="dark"] .form-row textarea { background: #2a2a2a; color: #f2f2f2; box-shadow: inset 2px 2px 0px 0px #000; }
   .denied-box { text-align: center; padding: 60px 20px; }
   .denied-box i { font-size: 48px; color: var(--red); margin-bottom: 12px; }
+
+  .admin-tabs { display: flex; gap: 6px; margin-bottom: 20px; overflow-x: auto; }
+  .admin-tab-btn {
+    padding: 8px 16px; font-size: 11px; font-weight: 900; text-transform: uppercase; white-space: nowrap;
+    border: var(--border-thick); box-shadow: var(--shadow-light); background: #fff; color: #111; cursor: pointer;
+    transition: var(--transition);
+  }
+  .admin-tab-btn.active { background: var(--orange); color: #fff; box-shadow: var(--shadow-heavy); }
+  [data-theme="dark"] .admin-tab-btn { background: #2a2a2a; color: #f2f2f2; }
+  .admin-tab-section { display: none; }
+  .admin-tab-section.active { display: block; }
+  .mini-badge { font-size: 9px; font-weight: 900; padding: 2px 8px; border: 2px solid #111; }
+  .thumb-preview { width: 100%; max-height: 100px; object-fit: cover; margin-top: 8px; display: none; border: var(--border-thick); }
 </style>
 </head>
 <body>
@@ -50,51 +64,128 @@
 </div>
 
 <div id="adminContent" class="admin-wrap" style="display:none;">
-  <h1 style="font-weight:900;font-size:24px;text-transform:uppercase;margin-bottom:4px;">Kelola Kode Redeem</h1>
-  <p style="color:var(--text-muted);font-size:13px;margin-bottom:20px;">Buat kode baru buat dibagiin ke user (giveaway, promo, dll)</p>
 
-  <div class="card">
-    <div class="section-title">➕ BUAT KODE BARU</div>
-    <div class="form-row">
-      <div>
-        <label>Kode</label>
-        <input type="text" id="newCode" placeholder="Contoh: POLAR2026" style="text-transform:uppercase;">
-      </div>
-      <div>
-        <label>Jumlah Coin</label>
-        <input type="number" id="newCoinValue" placeholder="5" min="1">
-      </div>
-    </div>
-    <div class="form-row">
-      <div>
-        <label>Maks. Pemakaian</label>
-        <input type="number" id="newMaxUses" placeholder="1" min="1" value="1">
-      </div>
-      <div>
-        <label>Kadaluarsa (opsional)</label>
-        <input type="date" id="newExpiresAt">
-      </div>
-    </div>
-    <button class="btn btn-orange btn-full" id="createCodeBtn" onclick="createCode()"><i class="fas fa-plus"></i> Buat Kode</button>
+  <div class="admin-tabs">
+    <button class="admin-tab-btn active" onclick="switchTab('codes')" id="tabBtn-codes"><i class="fas fa-ticket"></i> Kode Redeem</button>
+    <button class="admin-tab-btn" onclick="switchTab('events')" id="tabBtn-events"><i class="fas fa-bullhorn"></i> Event</button>
+    <button class="admin-tab-btn" onclick="switchTab('users')" id="tabBtn-users"><i class="fas fa-users"></i> User</button>
   </div>
 
-  <div class="card">
-    <div class="section-title">📋 DAFTAR KODE</div>
-    <div style="overflow-x:auto;">
-      <table class="admin-table">
-        <thead>
-          <tr>
-            <th>Kode</th>
-            <th>Coin</th>
-            <th>Terpakai</th>
-            <th>Status</th>
-            <th>Aksi</th>
-          </tr>
-        </thead>
-        <tbody id="codesTableBody"></tbody>
-      </table>
+  <!-- ===== TAB: KODE REDEEM ===== -->
+  <div id="tab-codes" class="admin-tab-section active">
+    <h1 style="font-weight:900;font-size:22px;text-transform:uppercase;margin-bottom:4px;">Kelola Kode Redeem</h1>
+    <p style="color:var(--text-muted);font-size:13px;margin-bottom:20px;">Buat kode baru buat dibagiin ke user (giveaway, promo, dll)</p>
+
+    <div class="card">
+      <div class="section-title">➕ BUAT KODE BARU</div>
+      <div class="form-row">
+        <div>
+          <label>Kode</label>
+          <input type="text" id="newCode" placeholder="Contoh: POLAR2026" style="text-transform:uppercase;">
+        </div>
+        <div>
+          <label>Jumlah Coin</label>
+          <input type="number" id="newCoinValue" placeholder="5" min="1">
+        </div>
+      </div>
+      <div class="form-row">
+        <div>
+          <label>Maks. Pemakaian</label>
+          <input type="number" id="newMaxUses" placeholder="1" min="1" value="1">
+        </div>
+        <div>
+          <label>Kadaluarsa (opsional)</label>
+          <input type="date" id="newExpiresAt">
+        </div>
+      </div>
+      <button class="btn btn-orange btn-full" id="createCodeBtn" onclick="createCode()"><i class="fas fa-plus"></i> Buat Kode</button>
+    </div>
+
+    <div class="card">
+      <div class="section-title">📋 DAFTAR KODE</div>
+      <div style="overflow-x:auto;">
+        <table class="admin-table">
+          <thead><tr><th>Kode</th><th>Coin</th><th>Terpakai</th><th>Status</th><th>Aksi</th></tr></thead>
+          <tbody id="codesTableBody"></tbody>
+        </table>
+      </div>
     </div>
   </div>
+
+  <!-- ===== TAB: EVENT ===== -->
+  <div id="tab-events" class="admin-tab-section">
+    <h1 style="font-weight:900;font-size:22px;text-transform:uppercase;margin-bottom:4px;">Kelola Event</h1>
+    <p style="color:var(--text-muted);font-size:13px;margin-bottom:20px;">Event bakal muncul otomatis ke semua user sampai tanggal berakhir</p>
+
+    <div class="card">
+      <div class="section-title" id="eventFormTitle">➕ BUAT EVENT BARU</div>
+      <input type="hidden" id="editEventId" value="">
+      <div class="form-row full">
+        <div>
+          <label>Judul Event</label>
+          <input type="text" id="eventTitle" placeholder="Contoh: Promo Ramadan — Double Coin!">
+        </div>
+      </div>
+      <div class="form-row full">
+        <div>
+          <label>Deskripsi</label>
+          <textarea id="eventDescription" placeholder="Ceritain event-nya di sini..."></textarea>
+        </div>
+      </div>
+      <div class="form-row full">
+        <div>
+          <label>URL Thumbnail (opsional)</label>
+          <input type="text" id="eventThumbnail" placeholder="https://..." oninput="previewThumb()">
+          <img id="thumbPreview" class="thumb-preview">
+        </div>
+      </div>
+      <div class="form-row">
+        <div>
+          <label>Tanggal Mulai (opsional)</label>
+          <input type="date" id="eventStartDate">
+        </div>
+        <div>
+          <label>Tanggal Berakhir (opsional)</label>
+          <input type="date" id="eventEndDate">
+        </div>
+      </div>
+      <div class="form-row">
+        <div>
+          <label>Link Tombol</label>
+          <input type="text" id="eventLinkUrl" placeholder="https://...">
+        </div>
+        <div>
+          <label>Teks Tombol</label>
+          <input type="text" id="eventLinkLabel" placeholder="Lihat Event">
+        </div>
+      </div>
+      <button class="btn btn-orange btn-full" id="saveEventBtn" onclick="saveEvent()"><i class="fas fa-plus"></i> Buat Event</button>
+      <button class="btn btn-close-modal btn-full" id="cancelEditBtn" style="margin-top:6px;display:none;" onclick="cancelEditEvent()">Batal Edit</button>
+    </div>
+
+    <div class="card">
+      <div class="section-title">📋 DAFTAR EVENT</div>
+      <div id="eventsAdminList"></div>
+    </div>
+  </div>
+
+  <!-- ===== TAB: USER ===== -->
+  <div id="tab-users" class="admin-tab-section">
+    <h1 style="font-weight:900;font-size:22px;text-transform:uppercase;margin-bottom:4px;">Kelola User</h1>
+    <p style="color:var(--text-muted);font-size:13px;margin-bottom:20px;">Cari user & atur Polar Coin mereka manual</p>
+
+    <div class="card">
+      <div class="form-row full">
+        <div>
+          <label>Cari (nama / email)</label>
+          <input type="text" id="userSearchInput" placeholder="Ketik buat cari..." oninput="debouncedSearchUsers()">
+        </div>
+      </div>
+    </div>
+
+    <div id="usersList"></div>
+  </div>
+
 </div>
 
 <div class="toast" id="toast"></div>
@@ -117,6 +208,21 @@ function showToast(msg, type = 'info') {
   t._timeout = setTimeout(() => { t.style.display = 'none'; }, 4000);
 }
 
+// ============================================================
+// TABS
+// ============================================================
+function switchTab(tab) {
+  document.querySelectorAll('.admin-tab-section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.admin-tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + tab).classList.add('active');
+  document.getElementById('tabBtn-' + tab).classList.add('active');
+  if (tab === 'events') loadEventsAdmin();
+  if (tab === 'users') searchUsers();
+}
+
+// ============================================================
+// ACCESS CHECK
+// ============================================================
 async function checkAdminAccess() {
   try {
     const res = await fetch('/api/me', { credentials: 'include' });
@@ -135,15 +241,15 @@ async function checkAdminAccess() {
   }
 }
 
+// ============================================================
+// KODE REDEEM
+// ============================================================
 async function loadCodes() {
   try {
     const res = await fetch('/api/admin/codes', { credentials: 'include' });
     const data = await res.json();
-    if (!data.success) return;
-    renderCodes(data.codes);
-  } catch (e) {
-    console.error(e);
-  }
+    if (data.success) renderCodes(data.codes);
+  } catch (e) { console.error(e); }
 }
 
 function renderCodes(codes) {
@@ -164,9 +270,7 @@ function renderCodes(codes) {
         <td>${c.used_count}/${c.max_uses}</td>
         <td style="color:${statusColor};font-weight:800;">${statusText}</td>
         <td>
-          <button class="btn btn-sm ${c.active ? 'btn-danger' : 'btn-success'}" onclick="toggleCode(${c.id}, ${!c.active})">
-            ${c.active ? 'Nonaktifin' : 'Aktifin'}
-          </button>
+          <button class="btn btn-sm ${c.active ? 'btn-danger' : 'btn-success'}" onclick="toggleCode(${c.id}, ${!c.active})">${c.active ? 'Nonaktifin' : 'Aktifin'}</button>
           <button class="btn btn-sm btn-danger" onclick="deleteCode(${c.id}, '${c.code}')" style="margin-top:4px;"><i class="fas fa-trash"></i></button>
         </td>
       </tr>`;
@@ -178,52 +282,35 @@ async function createCode() {
   const coinValue = document.getElementById('newCoinValue').value;
   const maxUses = document.getElementById('newMaxUses').value || 1;
   const expiresAt = document.getElementById('newExpiresAt').value;
-
-  if (!code || !coinValue) {
-    showToast('❌ Kode & jumlah coin wajib diisi', 'error');
-    return;
-  }
+  if (!code || !coinValue) { showToast('❌ Kode & jumlah coin wajib diisi', 'error'); return; }
 
   const btn = document.getElementById('createCodeBtn');
   btn.disabled = true;
-
   try {
     const res = await fetch('/api/admin/codes', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
       body: JSON.stringify({ code, coinValue, maxUses, expiresAt: expiresAt || null })
     });
     const data = await res.json();
-    if (!data.success) {
-      showToast('❌ ' + data.message, 'error');
-      return;
-    }
+    if (!data.success) { showToast('❌ ' + data.message, 'error'); return; }
     showToast('✅ Kode berhasil dibuat!', 'success');
     document.getElementById('newCode').value = '';
     document.getElementById('newCoinValue').value = '';
     document.getElementById('newMaxUses').value = '1';
     document.getElementById('newExpiresAt').value = '';
     loadCodes();
-  } catch (e) {
-    showToast('❌ Gagal bikin kode', 'error');
-  } finally {
-    btn.disabled = false;
-  }
+  } catch (e) { showToast('❌ Gagal bikin kode', 'error'); }
+  finally { btn.disabled = false; }
 }
 
 async function toggleCode(id, newActive) {
   try {
     await fetch('/api/admin/codes/' + id, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
       body: JSON.stringify({ active: newActive })
     });
     loadCodes();
-  } catch (e) {
-    showToast('❌ Gagal update kode', 'error');
-  }
+  } catch (e) { showToast('❌ Gagal update kode', 'error'); }
 }
 
 async function deleteCode(id, code) {
@@ -232,9 +319,203 @@ async function deleteCode(id, code) {
     await fetch('/api/admin/codes/' + id, { method: 'DELETE', credentials: 'include' });
     showToast('✅ Kode dihapus', 'success');
     loadCodes();
-  } catch (e) {
-    showToast('❌ Gagal hapus kode', 'error');
+  } catch (e) { showToast('❌ Gagal hapus kode', 'error'); }
+}
+
+// ============================================================
+// EVENT
+// ============================================================
+function previewThumb() {
+  const url = document.getElementById('eventThumbnail').value.trim();
+  const img = document.getElementById('thumbPreview');
+  if (url) { img.src = url; img.style.display = 'block'; } else { img.style.display = 'none'; }
+}
+
+async function loadEventsAdmin() {
+  try {
+    const res = await fetch('/api/admin/events', { credentials: 'include' });
+    const data = await res.json();
+    if (data.success) renderEventsAdmin(data.events);
+  } catch (e) { console.error(e); }
+}
+
+function toDateInputValue(ts) {
+  if (!ts) return '';
+  const d = new Date(Number(ts));
+  return d.toISOString().split('T')[0];
+}
+
+function renderEventsAdmin(events) {
+  const list = document.getElementById('eventsAdminList');
+  if (!events || events.length === 0) {
+    list.innerHTML = '<p style="text-align:center;padding:16px;color:var(--text-muted);font-size:13px;">Belum ada event</p>';
+    return;
   }
+  list.innerHTML = events.map(ev => {
+    const expired = ev.end_date && Date.now() > Number(ev.end_date);
+    const statusText = !ev.active ? 'Nonaktif' : expired ? 'Expired' : 'Aktif';
+    const statusColor = statusText === 'Aktif' ? 'var(--green)' : 'var(--red)';
+    return `
+      <div class="card" style="margin-bottom:10px;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
+          <div>
+            <div style="font-weight:900;font-size:14px;">${ev.title}</div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">
+              ${ev.event_date ? new Date(Number(ev.event_date)).toLocaleDateString('id-ID') : '-'}
+              ${ev.end_date ? ' s/d ' + new Date(Number(ev.end_date)).toLocaleDateString('id-ID') : ''}
+            </div>
+          </div>
+          <span class="mini-badge" style="color:${statusColor};border-color:${statusColor};">${statusText}</span>
+        </div>
+        <div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:10px;">
+          <button class="btn btn-sm btn-white" onclick='editEvent(${JSON.stringify(ev).replace(/'/g, "&#39;")})'><i class="fas fa-pen"></i> Edit</button>
+          <button class="btn btn-sm ${ev.active ? 'btn-danger' : 'btn-success'}" onclick="toggleEvent(${ev.id}, ${!ev.active})">${ev.active ? 'Nonaktifin' : 'Aktifin'}</button>
+          <button class="btn btn-sm btn-danger" onclick="deleteEvent(${ev.id}, '${ev.title.replace(/'/g, "\\'")}')"><i class="fas fa-trash"></i></button>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function editEvent(ev) {
+  document.getElementById('editEventId').value = ev.id;
+  document.getElementById('eventTitle').value = ev.title || '';
+  document.getElementById('eventDescription').value = ev.description || '';
+  document.getElementById('eventThumbnail').value = ev.thumbnail_url || '';
+  document.getElementById('eventStartDate').value = toDateInputValue(ev.event_date);
+  document.getElementById('eventEndDate').value = toDateInputValue(ev.end_date);
+  document.getElementById('eventLinkUrl').value = ev.link_url || '';
+  document.getElementById('eventLinkLabel').value = ev.link_label || '';
+  previewThumb();
+  document.getElementById('eventFormTitle').textContent = '✏️ EDIT EVENT';
+  document.getElementById('saveEventBtn').innerHTML = '<i class="fas fa-save"></i> Update Event';
+  document.getElementById('cancelEditBtn').style.display = 'block';
+  document.getElementById('tab-events').scrollIntoView({ behavior: 'smooth' });
+}
+
+function cancelEditEvent() {
+  document.getElementById('editEventId').value = '';
+  document.getElementById('eventTitle').value = '';
+  document.getElementById('eventDescription').value = '';
+  document.getElementById('eventThumbnail').value = '';
+  document.getElementById('eventStartDate').value = '';
+  document.getElementById('eventEndDate').value = '';
+  document.getElementById('eventLinkUrl').value = '';
+  document.getElementById('eventLinkLabel').value = '';
+  document.getElementById('thumbPreview').style.display = 'none';
+  document.getElementById('eventFormTitle').textContent = '➕ BUAT EVENT BARU';
+  document.getElementById('saveEventBtn').innerHTML = '<i class="fas fa-plus"></i> Buat Event';
+  document.getElementById('cancelEditBtn').style.display = 'none';
+}
+
+async function saveEvent() {
+  const editId = document.getElementById('editEventId').value;
+  const title = document.getElementById('eventTitle').value.trim();
+  const description = document.getElementById('eventDescription').value.trim();
+  const thumbnailUrl = document.getElementById('eventThumbnail').value.trim();
+  const eventDate = document.getElementById('eventStartDate').value;
+  const endDate = document.getElementById('eventEndDate').value;
+  const linkUrl = document.getElementById('eventLinkUrl').value.trim();
+  const linkLabel = document.getElementById('eventLinkLabel').value.trim();
+
+  if (!title) { showToast('❌ Judul event wajib diisi', 'error'); return; }
+
+  const btn = document.getElementById('saveEventBtn');
+  btn.disabled = true;
+  try {
+    const body = JSON.stringify({ title, description, thumbnailUrl, eventDate: eventDate || null, endDate: endDate || null, linkUrl, linkLabel });
+    const res = await fetch(editId ? '/api/admin/events/' + editId : '/api/admin/events', {
+      method: editId ? 'PATCH' : 'POST',
+      headers: { 'Content-Type': 'application/json' }, credentials: 'include', body
+    });
+    const data = await res.json();
+    if (!data.success) { showToast('❌ ' + data.message, 'error'); return; }
+    showToast(editId ? '✅ Event diupdate!' : '✅ Event dibuat!', 'success');
+    cancelEditEvent();
+    loadEventsAdmin();
+  } catch (e) { showToast('❌ Gagal simpan event', 'error'); }
+  finally { btn.disabled = false; }
+}
+
+async function toggleEvent(id, newActive) {
+  try {
+    await fetch('/api/admin/events/' + id, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+      body: JSON.stringify({ active: newActive })
+    });
+    loadEventsAdmin();
+  } catch (e) { showToast('❌ Gagal update event', 'error'); }
+}
+
+async function deleteEvent(id, title) {
+  if (!confirm(`Hapus event "${title}"?`)) return;
+  try {
+    await fetch('/api/admin/events/' + id, { method: 'DELETE', credentials: 'include' });
+    showToast('✅ Event dihapus', 'success');
+    loadEventsAdmin();
+  } catch (e) { showToast('❌ Gagal hapus event', 'error'); }
+}
+
+// ============================================================
+// USER MANAGEMENT
+// ============================================================
+let searchDebounceTimer = null;
+function debouncedSearchUsers() {
+  clearTimeout(searchDebounceTimer);
+  searchDebounceTimer = setTimeout(searchUsers, 400);
+}
+
+async function searchUsers() {
+  const search = document.getElementById('userSearchInput')?.value.trim() || '';
+  try {
+    const res = await fetch('/api/admin/users?search=' + encodeURIComponent(search), { credentials: 'include' });
+    const data = await res.json();
+    if (data.success) renderUsers(data.users);
+  } catch (e) { console.error(e); }
+}
+
+function renderUsers(users) {
+  const list = document.getElementById('usersList');
+  if (!users || users.length === 0) {
+    list.innerHTML = '<p style="text-align:center;padding:16px;color:var(--text-muted);font-size:13px;">User gak ketemu</p>';
+    return;
+  }
+  list.innerHTML = users.map(u => `
+    <div class="card">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+        <img src="${u.avatar}" style="width:38px;height:38px;border:var(--border-thick);box-shadow:var(--shadow-light);">
+        <div style="flex:1;min-width:0;">
+          <div style="font-weight:900;font-size:13px;">${u.name} ${u.is_admin ? '<span class="mini-badge" style="color:var(--orange);border-color:var(--orange);margin-left:4px;">ADMIN</span>' : ''}</div>
+          <div style="font-size:11px;color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${u.email}</div>
+        </div>
+        <div style="text-align:right;">
+          <div style="font-weight:900;font-size:14px;">🪙 ${u.coins}</div>
+          <div style="font-size:9px;color:var(--text-muted);text-transform:uppercase;">${u.auth_provider}</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:6px;">
+        <input type="number" id="coinInput-${u.id}" placeholder="Jumlah (boleh minus)" style="flex:1;padding:8px;background:#f0f0f0;border:var(--border-thick);box-shadow:inset 2px 2px 0px 0px #111;font-size:12px;font-weight:700;">
+        <button class="btn btn-sm btn-orange" onclick="adjustUserCoins(${u.id})"><i class="fas fa-coins"></i> Terapin</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function adjustUserCoins(userId) {
+  const input = document.getElementById('coinInput-' + userId);
+  const amount = input.value;
+  if (!amount || Number(amount) === 0) { showToast('❌ Masukkan jumlah coin dulu', 'error'); return; }
+
+  try {
+    const res = await fetch(`/api/admin/users/${userId}/adjust-coins`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+      body: JSON.stringify({ amount, reason: 'admin panel' })
+    });
+    const data = await res.json();
+    if (!data.success) { showToast('❌ ' + data.message, 'error'); return; }
+    showToast(`✅ Koin diupdate jadi ${data.coins}`, 'success');
+    input.value = '';
+    searchUsers();
+  } catch (e) { showToast('❌ Gagal update koin', 'error'); }
 }
 
 checkAdminAccess();
