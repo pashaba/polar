@@ -528,6 +528,125 @@ app.delete('/api/admin/codes/:id', authMiddleware, adminMiddleware, async (req, 
 });
 
 // ============================================================
+// EVENTS (publik — ditampilin ke semua user yang login)
+// ============================================================
+app.get('/api/events', authMiddleware, async (req, res) => {
+  try {
+    const now = Date.now();
+    const rows = await sb('GET', `polar_events?active=eq.true&order=event_date.asc.nullslast`);
+    const activeEvents = rows.filter(e => !e.end_date || Number(e.end_date) > now);
+    res.json({ success: true, events: activeEvents });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+// ============================================================
+// ADMIN — kelola event
+// ============================================================
+app.get('/api/admin/events', authMiddleware, adminMiddleware, async (req, res) => {
+  try {
+    const rows = await sb('GET', 'polar_events?order=created_at.desc');
+    res.json({ success: true, events: rows });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+app.post('/api/admin/events', authMiddleware, adminMiddleware, async (req, res) => {
+  try {
+    const { title, description, thumbnailUrl, eventDate, endDate, linkUrl, linkLabel } = req.body;
+    if (!title || !title.trim()) {
+      return res.status(400).json({ success: false, message: 'Judul event wajib diisi' });
+    }
+
+    const [created] = await sb('POST', 'polar_events', {
+      title: title.trim(),
+      description: description || '',
+      thumbnail_url: thumbnailUrl || '',
+      event_date: eventDate ? new Date(eventDate).getTime() : null,
+      end_date: endDate ? new Date(endDate).getTime() : null,
+      link_url: linkUrl || '',
+      link_label: (linkLabel && linkLabel.trim()) || 'Lihat Event',
+      active: true,
+      created_at: Date.now()
+    });
+
+    res.json({ success: true, event: created });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+app.patch('/api/admin/events/:id', authMiddleware, adminMiddleware, async (req, res) => {
+  try {
+    const { title, description, thumbnailUrl, eventDate, endDate, linkUrl, linkLabel, active } = req.body;
+    const patch = {};
+    if (title !== undefined) patch.title = title;
+    if (description !== undefined) patch.description = description;
+    if (thumbnailUrl !== undefined) patch.thumbnail_url = thumbnailUrl;
+    if (eventDate !== undefined) patch.event_date = eventDate ? new Date(eventDate).getTime() : null;
+    if (endDate !== undefined) patch.end_date = endDate ? new Date(endDate).getTime() : null;
+    if (linkUrl !== undefined) patch.link_url = linkUrl;
+    if (linkLabel !== undefined) patch.link_label = linkLabel;
+    if (active !== undefined) patch.active = !!active;
+
+    await sb('PATCH', `polar_events?id=eq.${req.params.id}`, patch);
+    res.json({ success: true });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+app.delete('/api/admin/events/:id', authMiddleware, adminMiddleware, async (req, res) => {
+  try {
+    await sb('DELETE', `polar_events?id=eq.${req.params.id}`);
+    res.json({ success: true });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+// ============================================================
+// ADMIN — kelola user (list, cari, tambah/kurang coin)
+// ============================================================
+app.get('/api/admin/users', authMiddleware, adminMiddleware, async (req, res) => {
+  try {
+    const search = (req.query.search || '').trim();
+    let endpoint = 'polar_users?select=id,name,email,avatar,coins,auth_provider,is_admin,created_at&order=created_at.desc&limit=50';
+    if (search) {
+      endpoint += `&or=(email.ilike.*${encodeURIComponent(search)}*,name.ilike.*${encodeURIComponent(search)}*)`;
+    }
+    const rows = await sb('GET', endpoint);
+    res.json({ success: true, users: rows });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+app.post('/api/admin/users/:id/adjust-coins', authMiddleware, adminMiddleware, async (req, res) => {
+  try {
+    const { amount, reason } = req.body;
+    if (!amount || Number(amount) === 0) {
+      return res.status(400).json({ success: false, message: 'Jumlah coin wajib diisi (boleh minus buat ngurangin)' });
+    }
+
+    const targetUser = await getUserById(req.params.id);
+    if (!targetUser) {
+      return res.status(404).json({ success: false, message: 'User gak ketemu' });
+    }
+
+    const newCoins = Math.max(0, (targetUser.coins || 0) + Number(amount));
+    await sb('PATCH', `polar_users?id=eq.${targetUser.id}`, { coins: newCoins });
+    await logCoinTransaction(targetUser.id, Number(amount), `admin_adjust:${(reason && reason.trim()) || 'manual'}`, newCoins);
+
+    res.json({ success: true, coins: newCoins });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+// ============================================================
 // SESSIONS (claim / list / delete bot)
 // ============================================================
 app.get('/api/sessions', authMiddleware, async (req, res) => {
