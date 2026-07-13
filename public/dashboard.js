@@ -375,6 +375,42 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // ============================================================
+// REDEEM CODE
+// ============================================================
+async function redeemCode() {
+  const input = document.getElementById('redeemCodeInput');
+  const code = input.value.trim();
+  if (!code) { showToast('🎫 Masukkan kode dulu', 'error'); return; }
+
+  const btn = document.getElementById('redeemBtn');
+  btn.disabled = true;
+
+  try {
+    const res = await fetch('/api/redeem', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ code })
+    });
+    const data = await res.json();
+    if (!data.success) {
+      showToast('❌ ' + data.message, 'error');
+      return;
+    }
+    currentUser.coins = data.coins;
+    renderUser();
+    renderPackages();
+    showToast(`🎉 Berhasil! +${data.coinsAdded} Polar Coin`, 'gold');
+    input.value = '';
+    loadCoinHistory();
+  } catch (e) {
+    showToast('❌ Gagal redeem kode, coba lagi', 'error');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+// ============================================================
 // COIN HISTORY
 // ============================================================
 const REASON_LABELS = {
@@ -387,6 +423,10 @@ function formatHistoryReason(reason) {
   if (reason.startsWith('claim_session:')) {
     const script = reason.split(':')[1];
     return `🤖 Claim Server (${script})`;
+  }
+  if (reason.startsWith('redeem_code:')) {
+    const code = reason.split(':')[1];
+    return `🎫 Redeem Kode (${code})`;
   }
   return REASON_LABELS[reason] || reason;
 }
