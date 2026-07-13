@@ -43,6 +43,12 @@
   .admin-tab-section.active { display: block; }
   .mini-badge { font-size: 9px; font-weight: 900; padding: 2px 8px; border: 2px solid #111; }
   .thumb-preview { width: 100%; max-height: 100px; object-fit: cover; margin-top: 8px; display: none; border: var(--border-thick); }
+  .uuid-result-item {
+    display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 10px;
+    background: #f0f0f0; border: var(--border-thick); margin-bottom: 6px;
+  }
+  [data-theme="dark"] .uuid-result-item { background: #2a2a2a; }
+  .uuid-result-item .uuid-mono { font-family: monospace; font-size: 10px; color: var(--text-muted); word-break: break-all; }
 </style>
 </head>
 <body>
@@ -68,6 +74,7 @@
   <div class="admin-tabs">
     <button class="admin-tab-btn active" onclick="switchTab('codes')" id="tabBtn-codes"><i class="fas fa-ticket"></i> Kode Redeem</button>
     <button class="admin-tab-btn" onclick="switchTab('events')" id="tabBtn-events"><i class="fas fa-bullhorn"></i> Event</button>
+    <button class="admin-tab-btn" onclick="switchTab('scripts')" id="tabBtn-scripts"><i class="fas fa-robot"></i> Script</button>
     <button class="admin-tab-btn" onclick="switchTab('users')" id="tabBtn-users"><i class="fas fa-users"></i> User</button>
   </div>
 
@@ -169,6 +176,76 @@
     </div>
   </div>
 
+  <!-- ===== TAB: SCRIPT ===== -->
+  <div id="tab-scripts" class="admin-tab-section">
+    <h1 style="font-weight:900;font-size:22px;text-transform:uppercase;margin-bottom:4px;">Kelola Script Bot</h1>
+    <p style="color:var(--text-muted);font-size:13px;margin-bottom:20px;">Script yang aktif bakal otomatis muncul jadi pilihan di form Claim user</p>
+
+    <div class="card">
+      <div class="section-title" id="scriptFormTitle">➕ TAMBAH SCRIPT BARU</div>
+      <input type="hidden" id="editScriptId" value="">
+      <div class="form-row">
+        <div>
+          <label>Script Key (unik, no spasi)</label>
+          <input type="text" id="scriptKey" placeholder="Contoh: phoenix_md">
+        </div>
+        <div>
+          <label>Nama Ditampilkan</label>
+          <input type="text" id="scriptDisplayName" placeholder="Contoh: Phoenix MD">
+        </div>
+      </div>
+      <div class="form-row">
+        <div>
+          <label>Subtitle (opsional)</label>
+          <input type="text" id="scriptSubtitle" placeholder="Contoh: Pterodactyl Engine">
+        </div>
+        <div>
+          <label>Urutan Tampil</label>
+          <input type="number" id="scriptSortOrder" placeholder="0" value="0">
+        </div>
+      </div>
+      <div class="form-row full">
+        <div>
+          <label>Icon / Logo</label>
+          <input type="text" id="scriptIcon" placeholder="fa-robot (Font Awesome) ATAU https://link-logo.png" list="iconSuggestions" oninput="previewScriptIcon()">
+          <datalist id="iconSuggestions">
+            <option value="fa-robot"><option value="fa-microchip"><option value="fa-gem">
+            <option value="fa-bolt"><option value="fa-shield-halved"><option value="fa-server">
+            <option value="fa-brain"><option value="fa-rocket"><option value="fa-crown">
+          </datalist>
+          <div id="scriptIconPreview" style="margin-top:8px;font-size:24px;color:var(--orange);"></div>
+        </div>
+      </div>
+      <div class="form-row full">
+        <div>
+          <label>Panel URL (Pterodactyl)</label>
+          <input type="text" id="scriptPanelUrl" placeholder="https://panel-kamu.com">
+        </div>
+      </div>
+      <div class="form-row">
+        <div>
+          <label>API Key (client)</label>
+          <input type="text" id="scriptApiKey" placeholder="ptlc_xxxxxxxx">
+        </div>
+        <div>
+          <label>Server UUID</label>
+          <input type="text" id="scriptServerUuid" placeholder="xxxxxxxx-xxxx-...">
+        </div>
+      </div>
+
+      <button type="button" class="btn btn-white btn-full" onclick="checkPanelUuid()" style="margin-bottom:10px;"><i class="fas fa-magnifying-glass"></i> Cek Server & UUID dari Panel</button>
+      <div id="uuidCheckResult"></div>
+
+      <button class="btn btn-orange btn-full" id="saveScriptBtn" onclick="saveScript()"><i class="fas fa-plus"></i> Tambah Script</button>
+      <button class="btn btn-close-modal btn-full" id="cancelEditScriptBtn" style="margin-top:6px;display:none;" onclick="cancelEditScript()">Batal Edit</button>
+    </div>
+
+    <div class="card">
+      <div class="section-title">📋 DAFTAR SCRIPT</div>
+      <div id="scriptsAdminList"></div>
+    </div>
+  </div>
+
   <!-- ===== TAB: USER ===== -->
   <div id="tab-users" class="admin-tab-section">
     <h1 style="font-weight:900;font-size:22px;text-transform:uppercase;margin-bottom:4px;">Kelola User</h1>
@@ -217,6 +294,7 @@ function switchTab(tab) {
   document.getElementById('tab-' + tab).classList.add('active');
   document.getElementById('tabBtn-' + tab).classList.add('active');
   if (tab === 'events') loadEventsAdmin();
+  if (tab === 'scripts') loadScriptsAdmin();
   if (tab === 'users') searchUsers();
 }
 
@@ -453,6 +531,203 @@ async function deleteEvent(id, title) {
     showToast('✅ Event dihapus', 'success');
     loadEventsAdmin();
   } catch (e) { showToast('❌ Gagal hapus event', 'error'); }
+}
+
+// ============================================================
+// CEK UUID SERVER DARI PANEL
+// ============================================================
+async function checkPanelUuid() {
+  const panelUrl = document.getElementById('scriptPanelUrl').value.trim();
+  const apiKey = document.getElementById('scriptApiKey').value.trim();
+  const resultBox = document.getElementById('uuidCheckResult');
+
+  if (!panelUrl || !apiKey) {
+    showToast('❌ Isi Panel URL & API Key dulu', 'error');
+    return;
+  }
+
+  resultBox.innerHTML = '<p style="font-size:12px;color:var(--text-muted);padding:8px;">Mengecek ke panel...</p>';
+
+  try {
+    const res = await fetch('/api/admin/check-uuid', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ panelUrl, apiKey })
+    });
+    const data = await res.json();
+
+    if (!data.success) {
+      resultBox.innerHTML = `<p style="font-size:12px;color:var(--red);font-weight:700;padding:8px;">❌ ${data.message}</p>`;
+      return;
+    }
+    if (data.servers.length === 0) {
+      resultBox.innerHTML = '<p style="font-size:12px;color:var(--text-muted);padding:8px;">Gak ada server ditemukan buat API key ini</p>';
+      return;
+    }
+
+    resultBox.innerHTML = data.servers.map(s => `
+      <div class="uuid-result-item">
+        <div style="min-width:0;">
+          <div style="font-weight:800;font-size:12px;">${s.name} ${s.suspended ? '<span style="color:var(--red);">(Suspended)</span>' : ''}</div>
+          <div class="uuid-mono">${s.uuid}</div>
+        </div>
+        <button type="button" class="btn btn-sm btn-orange" onclick="useUuid('${s.uuid}')" style="flex-shrink:0;">Pakai</button>
+      </div>
+    `).join('');
+  } catch (e) {
+    resultBox.innerHTML = '<p style="font-size:12px;color:var(--red);padding:8px;">❌ Gagal cek server, coba lagi</p>';
+  }
+}
+
+function useUuid(uuid) {
+  document.getElementById('scriptServerUuid').value = uuid;
+  showToast('✅ UUID dipilih', 'success');
+}
+
+// ============================================================
+// SCRIPT BOT
+// ============================================================
+function previewScriptIcon() {
+  const icon = document.getElementById('scriptIcon').value.trim();
+  const preview = document.getElementById('scriptIconPreview');
+  if (!icon) { preview.innerHTML = ''; return; }
+  if (icon.startsWith('http')) {
+    preview.innerHTML = `<img src="${icon}" style="width:32px;height:32px;object-fit:contain;" onerror="this.outerHTML='<span style=color:var(--red);font-size:12px;>Gagal load gambar</span>'">`;
+  } else {
+    preview.innerHTML = `<i class="fas ${icon}"></i>`;
+  }
+}
+
+async function loadScriptsAdmin() {
+  try {
+    const res = await fetch('/api/admin/scripts', { credentials: 'include' });
+    const data = await res.json();
+    if (data.success) renderScriptsAdmin(data.scripts);
+  } catch (e) { console.error(e); }
+}
+
+function renderScriptsAdmin(scripts) {
+  const list = document.getElementById('scriptsAdminList');
+  if (!scripts || scripts.length === 0) {
+    list.innerHTML = '<p style="text-align:center;padding:16px;color:var(--text-muted);font-size:13px;">Belum ada script</p>';
+    return;
+  }
+  list.innerHTML = scripts.map(s => {
+    const statusColor = s.active ? 'var(--green)' : 'var(--red)';
+    const iconHtml = s.icon && s.icon.startsWith('http')
+      ? `<img src="${s.icon}" style="width:28px;height:28px;object-fit:contain;">`
+      : `<i class="fas ${s.icon}" style="font-size:20px;color:var(--orange);"></i>`;
+    return `
+      <div class="card" style="margin-bottom:10px;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <div style="width:36px;height:36px;display:flex;align-items:center;justify-content:center;background:#f0f0f0;border:var(--border-thick);">${iconHtml}</div>
+            <div>
+              <div style="font-weight:900;font-size:14px;">${s.display_name}</div>
+              <div style="font-size:10px;color:var(--text-muted);font-family:monospace;">${s.script_key}</div>
+            </div>
+          </div>
+          <span class="mini-badge" style="color:${statusColor};border-color:${statusColor};">${s.active ? 'Aktif' : 'Nonaktif'}</span>
+        </div>
+        <div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:10px;">
+          <button class="btn btn-sm btn-white" onclick='editScript(${JSON.stringify(s).replace(/'/g, "&#39;")})'><i class="fas fa-pen"></i> Edit</button>
+          <button class="btn btn-sm ${s.active ? 'btn-danger' : 'btn-success'}" onclick="toggleScript(${s.id}, ${!s.active})">${s.active ? 'Nonaktifin' : 'Aktifin'}</button>
+          <button class="btn btn-sm btn-danger" onclick="deleteScript(${s.id}, '${s.display_name.replace(/'/g, "\\'")}')"><i class="fas fa-trash"></i></button>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function editScript(s) {
+  document.getElementById('editScriptId').value = s.id;
+  document.getElementById('scriptKey').value = s.script_key;
+  document.getElementById('scriptKey').disabled = true;
+  document.getElementById('scriptDisplayName').value = s.display_name;
+  document.getElementById('scriptSubtitle').value = s.subtitle || '';
+  document.getElementById('scriptSortOrder').value = s.sort_order || 0;
+  document.getElementById('scriptIcon').value = s.icon || '';
+  document.getElementById('scriptPanelUrl').value = s.panel_url;
+  document.getElementById('scriptApiKey').value = s.api_key;
+  document.getElementById('scriptServerUuid').value = s.server_uuid;
+  previewScriptIcon();
+  document.getElementById('scriptFormTitle').textContent = '✏️ EDIT SCRIPT';
+  document.getElementById('saveScriptBtn').innerHTML = '<i class="fas fa-save"></i> Update Script';
+  document.getElementById('cancelEditScriptBtn').style.display = 'block';
+  document.getElementById('tab-scripts').scrollIntoView({ behavior: 'smooth' });
+}
+
+function cancelEditScript() {
+  document.getElementById('editScriptId').value = '';
+  document.getElementById('scriptKey').value = '';
+  document.getElementById('scriptKey').disabled = false;
+  document.getElementById('scriptDisplayName').value = '';
+  document.getElementById('scriptSubtitle').value = '';
+  document.getElementById('scriptSortOrder').value = '0';
+  document.getElementById('scriptIcon').value = '';
+  document.getElementById('scriptPanelUrl').value = '';
+  document.getElementById('scriptApiKey').value = '';
+  document.getElementById('scriptServerUuid').value = '';
+  document.getElementById('scriptIconPreview').innerHTML = '';
+  document.getElementById('uuidCheckResult').innerHTML = '';
+  document.getElementById('scriptFormTitle').textContent = '➕ TAMBAH SCRIPT BARU';
+  document.getElementById('saveScriptBtn').innerHTML = '<i class="fas fa-plus"></i> Tambah Script';
+  document.getElementById('cancelEditScriptBtn').style.display = 'none';
+}
+
+async function saveScript() {
+  const editId = document.getElementById('editScriptId').value;
+  const scriptKey = document.getElementById('scriptKey').value.trim();
+  const displayName = document.getElementById('scriptDisplayName').value.trim();
+  const subtitle = document.getElementById('scriptSubtitle').value.trim();
+  const sortOrder = document.getElementById('scriptSortOrder').value;
+  const icon = document.getElementById('scriptIcon').value.trim();
+  const panelUrl = document.getElementById('scriptPanelUrl').value.trim();
+  const apiKey = document.getElementById('scriptApiKey').value.trim();
+  const serverUuid = document.getElementById('scriptServerUuid').value.trim();
+
+  if (!displayName || !panelUrl || !apiKey || !serverUuid || (!editId && !scriptKey)) {
+    showToast('❌ Semua field wajib diisi (kecuali subtitle & icon)', 'error');
+    return;
+  }
+
+  const btn = document.getElementById('saveScriptBtn');
+  btn.disabled = true;
+  try {
+    const body = editId
+      ? JSON.stringify({ displayName, subtitle, icon, panelUrl, apiKey, serverUuid, sortOrder })
+      : JSON.stringify({ scriptKey, displayName, subtitle, icon, panelUrl, apiKey, serverUuid, sortOrder });
+
+    const res = await fetch(editId ? '/api/admin/scripts/' + editId : '/api/admin/scripts', {
+      method: editId ? 'PATCH' : 'POST',
+      headers: { 'Content-Type': 'application/json' }, credentials: 'include', body
+    });
+    const data = await res.json();
+    if (!data.success) { showToast('❌ ' + data.message, 'error'); return; }
+    showToast(editId ? '✅ Script diupdate!' : '✅ Script ditambahkan!', 'success');
+    cancelEditScript();
+    loadScriptsAdmin();
+  } catch (e) { showToast('❌ Gagal simpan script', 'error'); }
+  finally { btn.disabled = false; }
+}
+
+async function toggleScript(id, newActive) {
+  try {
+    await fetch('/api/admin/scripts/' + id, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+      body: JSON.stringify({ active: newActive })
+    });
+    loadScriptsAdmin();
+  } catch (e) { showToast('❌ Gagal update script', 'error'); }
+}
+
+async function deleteScript(id, name) {
+  if (!confirm(`Hapus script "${name}"? Session yang udah pernah claim pakai script ini gak akan kehapus, cuma pilihannya aja yang ilang dari form claim.`)) return;
+  try {
+    await fetch('/api/admin/scripts/' + id, { method: 'DELETE', credentials: 'include' });
+    showToast('✅ Script dihapus', 'success');
+    loadScriptsAdmin();
+  } catch (e) { showToast('❌ Gagal hapus script', 'error'); }
 }
 
 // ============================================================
