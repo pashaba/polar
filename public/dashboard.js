@@ -105,6 +105,7 @@ function closeChannelPopup() {
 document.addEventListener('DOMContentLoaded', async () => {
   await loadMe();
   renderPackages();
+  await loadScripts();
   await Promise.all([loadSessions(), loadServerStatus()]);
   loadCoinHistory();
   loadEvents();
@@ -202,6 +203,46 @@ function navTo(sectionId) {
 }
 
 // loading modal lama udah dihapus — sekarang cukup pakai top progress bar + spinner di tombol
+
+// ============================================================
+// SCRIPTS (dinamis dari database, dikelola admin)
+// ============================================================
+function renderScriptIcon(icon, style) {
+  const styleAttr = style || 'margin-bottom:6px;';
+  if (icon && icon.startsWith('http')) {
+    return `<img src="${icon}" style="width:26px;height:26px;object-fit:contain;${styleAttr}" onerror="this.style.display='none'">`;
+  }
+  return `<i class="fas ${icon || 'fa-robot'}" style="${styleAttr}"></i>`;
+}
+
+async function loadScripts() {
+  try {
+    const res = await fetch('/api/scripts', { credentials: 'include' });
+    const data = await res.json();
+    if (!data.success) return;
+    renderScriptSelect(data.scripts);
+  } catch (e) {
+    console.error(e);
+  }
+}
+
+function renderScriptSelect(scripts) {
+  const grid = document.getElementById('scriptSelectGrid');
+  if (!grid) return;
+
+  if (!scripts || scripts.length === 0) {
+    grid.innerHTML = `<p style="grid-column:1/-1;text-align:center;color:var(--text-muted);font-size:12px;font-weight:600;padding:12px;">Belum ada script tersedia</p>`;
+    return;
+  }
+
+  grid.innerHTML = scripts.map((s, i) => `
+    <div class="select-box ${i === 0 ? 'active' : ''}" onclick="selectScript(this)" data-script="${s.script_key}" id="scriptOption-${s.script_key}">
+      ${renderScriptIcon(s.icon)}
+      <h4>${s.display_name}</h4>
+      <p>${s.subtitle || ''}</p>
+    </div>
+  `).join('');
+}
 
 // ============================================================
 // PACKAGE / SCRIPT SELECT
@@ -550,36 +591,57 @@ async function loadServerStatus() {
     const data = await res.json();
     if (!data.success) return;
 
-    const { phoenix, ourin, ourinDeluxe } = data;
-    setStatusUI('phoenix', phoenix);
-    setStatusUI('ourin', ourin);
-    setStatusUI('ourinDeluxe', ourinDeluxe);
-    updateScriptAvailability({ phoenix_md: phoenix, ourin_md: ourin, ourin_md_deluxe: ourinDeluxe });
+    renderStatusCards(data.scripts);
+    updateScriptAvailability(data.scripts);
 
-    const onlineCount = (phoenix.online ? 1 : 0) + (ourin.online ? 1 : 0) + (ourinDeluxe.online ? 1 : 0);
+    const onlineCount = data.scripts.filter(s => s.online).length;
     document.getElementById('statOnline').textContent = onlineCount;
-    document.getElementById('statOffline').textContent = 3 - onlineCount;
+    document.getElementById('statOffline').textContent = data.scripts.length - onlineCount;
   } catch (e) {
     console.error(e);
   }
 }
 
-function updateScriptAvailability(statusMap) {
-  Object.entries(statusMap).forEach(([script, status]) => {
-    const box = document.getElementById('scriptOption-' + script);
+function renderStatusCards(scripts) {
+  const container = document.getElementById('statusCardsContainer');
+  if (!container) return;
+
+  if (!scripts || scripts.length === 0) {
+    container.innerHTML = `<p style="text-align:center;color:var(--text-muted);font-size:13px;font-weight:600;padding:20px;">Belum ada script yang dikonfigurasi</p>`;
+    return;
+  }
+
+  container.innerHTML = scripts.map(s => `
+    <div class="card" style="box-shadow:var(--shadow-heavy);">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="background:var(--orange);padding:8px;border:var(--border-thick);box-shadow:var(--shadow-light);">${renderScriptIcon(s.icon, 'color:#fff;font-size:14px;margin-bottom:0;')}</div>
+          <div><h3 style="font-size:14px;font-weight:900;">${s.display_name.toUpperCase()}</h3><div style="font-size:10px;font-weight:600;color:var(--text-muted);">Pterodactyl</div></div>
+        </div>
+        <div class="badge-status ${s.online ? 'bg-online' : 'bg-offline'}">${s.online ? 'ONLINE' : 'OFFLINE'}</div>
+      </div>
+      <div class="spec-row"><span style="font-weight:600;color:var(--text-muted);">RAM</span><span style="font-weight:900;">${s.ram}</span></div>
+      <div class="spec-row"><span style="font-weight:600;color:var(--text-muted);">PING</span><span style="font-weight:900;">${s.ping}</span></div>
+    </div>
+  `).join('');
+}
+
+function updateScriptAvailability(scripts) {
+  scripts.forEach(s => {
+    const box = document.getElementById('scriptOption-' + s.script_key);
     if (!box) return;
 
     let badge = box.querySelector('.script-offline-badge');
 
-    if (!status.online) {
+    if (!s.online) {
       box.dataset.offline = 'true';
       box.style.opacity = '.45';
       box.style.cursor = 'not-allowed';
       if (box.classList.contains('active')) {
         box.classList.remove('active');
-        const firstOnline = Object.entries(statusMap).find(([, s]) => s.online);
+        const firstOnline = scripts.find(x => x.online);
         if (firstOnline) {
-          document.getElementById('scriptOption-' + firstOnline[0])?.classList.add('active');
+          document.getElementById('scriptOption-' + firstOnline.script_key)?.classList.add('active');
         }
       }
       if (!badge) {
@@ -596,12 +658,4 @@ function updateScriptAvailability(statusMap) {
       badge?.remove();
     }
   });
-}
-
-function setStatusUI(prefix, status) {
-  const badge = document.getElementById(prefix + 'Badge');
-  badge.textContent = status.online ? 'ONLINE' : 'OFFLINE';
-  badge.className = 'badge-status ' + (status.online ? 'bg-online' : 'bg-offline');
-  document.getElementById(prefix + 'Ram').textContent = status.ram;
-  document.getElementById(prefix + 'Ping').textContent = status.ping;
 }
