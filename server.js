@@ -16,11 +16,28 @@ app.use(express.static(path.join(__dirname, 'public')));
 // ============================================================
 // CLEAN URL ROUTES (gak perlu .html)
 // ============================================================
-app.get('/', (req, res) => res.redirect('/login'));
+
+// Cek cepat status login dari cookie, dipakai buat nentuin redirect / login vs dashboard
+function isAuthenticated(req) {
+  const token = req.cookies?.polar_token;
+  if (!token) return false;
+  try {
+    jwt.verify(token, process.env.JWT_SECRET);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// Root: udah login -> langsung ke dashboard. Belum login -> ke halaman login.
+app.get('/', (req, res) => res.redirect(isAuthenticated(req) ? '/dashboard' : '/login'));
+
 app.get('/dashboard', (req, res) => res.sendFile(path.join(__dirname, 'public', 'dashboard.html')));
 
-// /login pakai templating manual buat inject TURNSTILE_SITE_KEY (site key aman ditaruh di HTML, cuma secret key yang rahasia)
+// /login: kalau udah login, gak perlu liat form login lagi -> langsung ke dashboard
+// Kalau belum, pakai templating manual buat inject TURNSTILE_SITE_KEY (site key aman ditaruh di HTML, cuma secret key yang rahasia)
 app.get('/login', (req, res) => {
+  if (isAuthenticated(req)) return res.redirect('/dashboard');
   let html = fs.readFileSync(path.join(__dirname, 'public', 'login.html'), 'utf8');
   html = html.replace(/{{TURNSTILE_SITE_KEY}}/g, process.env.TURNSTILE_SITE_KEY || '');
   res.send(html);
@@ -738,6 +755,159 @@ app.post('/api/admin/users/:id/adjust-coins', authMiddleware, adminMiddleware, a
     await logCoinTransaction(targetUser.id, Number(amount), `admin_adjust:${(reason && reason.trim()) || 'manual'}`, newCoins);
 
     res.json({ success: true, coins: newCoins });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+// ============================================================
+// FEEDBACK (dari user)
+// ============================================================
+app.post('/api/feedback', authMiddleware, async (req, res) => {
+  try {
+    const { message, rating } = req.body;
+    if (!message || !message.trim()) {
+      return res.status(400).json({ success: false, message: 'Pesan feedback wajib diisi' });
+    }
+    await sb('POST', 'polar_feedback', {
+      user_id: req.user.uid,
+      message: message.trim(),
+      rating: rating ? Number(rating) : null,
+      status: 'new',
+      created_at: Date.now()
+    });
+    res.json({ success: true });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+app.get('/api/admin/feedback', authMiddleware, adminMiddleware, async (req, res) => {
+  try {
+    const rows = await sb('GET', 'polar_feedback?select=*,polar_users(name,email,avatar)&order=created_at.desc');
+    res.json({ success: true, feedback: rows });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+app.patch('/api/admin/feedback/:id', authMiddleware, adminMiddleware, async (req, res) => {
+  try {
+    const { status } = req.body;
+    await sb('PATCH', `polar_feedback?id=eq.${req.params.id}`, { status });
+    res.json({ success: true });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+app.delete('/api/admin/feedback/:id', authMiddleware, adminMiddleware, async (req, res) => {
+  try {
+    await sb('DELETE', `polar_feedback?id=eq.${req.params.id}`);
+    res.json({ success: true });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+// ============================================================
+// REQUEST SCRIPT (dari user)
+// ============================================================
+app.post('/api/script-requests', authMiddleware, async (req, res) => {
+  try {
+    const { scriptName, referenceLink, reason } = req.body;
+    if (!scriptName || !scriptName.trim()) {
+      return res.status(400).json({ success: false, message: 'Nama script wajib diisi' });
+    }
+    await sb('POST', 'polar_script_requests', {
+      user_id: req.user.uid,
+      script_name: scriptName.trim(),
+      reference_link: referenceLink || '',
+      reason: reason || '',
+      status: 'new',
+      created_at: Date.now()
+    });
+    res.json({ success: true });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+app.get('/api/admin/script-requests', authMiddleware, adminMiddleware, async (req, res) => {
+  try {
+    const rows = await sb('GET', 'polar_script_requests?select=*,polar_users(name,email,avatar)&order=created_at.desc');
+    res.json({ success: true, requests: rows });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+app.patch('/api/admin/script-requests/:id', authMiddleware, adminMiddleware, async (req, res) => {
+  try {
+    const { status } = req.body;
+    await sb('PATCH', `polar_script_requests?id=eq.${req.params.id}`, { status });
+    res.json({ success: true });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+app.delete('/api/admin/script-requests/:id', authMiddleware, adminMiddleware, async (req, res) => {
+  try {
+    await sb('DELETE', `polar_script_requests?id=eq.${req.params.id}`);
+    res.json({ success: true });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+// ============================================================
+// SPONSOR (dari user)
+// ============================================================
+app.post('/api/sponsor', authMiddleware, async (req, res) => {
+  try {
+    const { name, contact, company, message } = req.body;
+    if (!name || !name.trim() || !contact || !contact.trim()) {
+      return res.status(400).json({ success: false, message: 'Nama & kontak wajib diisi' });
+    }
+    await sb('POST', 'polar_sponsor_requests', {
+      user_id: req.user.uid,
+      name: name.trim(),
+      contact: contact.trim(),
+      company: company || '',
+      message: message || '',
+      status: 'new',
+      created_at: Date.now()
+    });
+    res.json({ success: true });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+app.get('/api/admin/sponsor', authMiddleware, adminMiddleware, async (req, res) => {
+  try {
+    const rows = await sb('GET', 'polar_sponsor_requests?select=*,polar_users(name,email,avatar)&order=created_at.desc');
+    res.json({ success: true, sponsors: rows });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+app.patch('/api/admin/sponsor/:id', authMiddleware, adminMiddleware, async (req, res) => {
+  try {
+    const { status } = req.body;
+    await sb('PATCH', `polar_sponsor_requests?id=eq.${req.params.id}`, { status });
+    res.json({ success: true });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+app.delete('/api/admin/sponsor/:id', authMiddleware, adminMiddleware, async (req, res) => {
+  try {
+    await sb('DELETE', `polar_sponsor_requests?id=eq.${req.params.id}`);
+    res.json({ success: true });
   } catch (e) {
     res.status(500).json({ success: false, message: e.message });
   }
