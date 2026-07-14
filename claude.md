@@ -20,20 +20,59 @@ Project ini hasil migrasi dari PHP (procedural, session-based) ke Node.js/Expres
 ## Struktur
 
 ```
-server.js              -> semua backend logic & route API
-vercel.json             -> config Vercel (includeFiles: public/** wajib ada, soalnya express.static pakai dynamic fs)
-schema.sql               -> ALTER statements + CREATE TABLE buat Supabase (jalanin manual di SQL editor, gak ada migration tool)
-.env.example              -> daftar env var yang wajib diisi di Vercel dashboard (bukan file .env di production)
-public/
-  login.html               -> login + register (2 card di 1 file, toggle via JS), + PWA meta tags, + anti-flash dark mode script
-  dashboard.html            -> dashboard utama, semua section (home/claim/status/sessions/history/profile) ada di 1 file, di-toggle via class .active
-  dashboard.js              -> semua logic dashboard: fetch /api/me, /api/sessions, /api/server-status, /api/coins/history, dark mode toggle, splash progress
-  style.css                 -> shared CSS neobrutalism + dark mode variables ([data-theme="dark"])
-  manifest.json              -> config PWA (nama, icon, theme color, start_url: /dashboard)
-  sw.js                      -> service worker (cache-first buat static asset, network-first buat halaman, API selalu network-only)
-  icons/                     -> icon PWA (192, 512, apple-touch) — placeholder bintang gold, ganti kalau ada logo asli
-```
+README.md                 -> dokumentasi project
+claude.md                 -> konteks project untuk Claude Code / AI assistant
+package.json              -> dependencies & scripts
+server.js                 -> semua backend logic + Express routes
+vercel.json               -> konfigurasi deploy Vercel
 
+public/
+│
+├── admin.html            -> panel admin
+├── dashboard.html        -> dashboard user
+├── dashboard.js          -> logic dashboard
+├── login.html            -> login & register
+├── privacy.html          -> kebijakan privasi
+├── style.css             -> shared stylesheet
+├── sw.js                 -> service worker
+├── manifest.json         -> konfigurasi PWA
+├── sitemap.xml           -> sitemap SEO
+├── robots.txt            -> robots SEO
+├── BingSiteAuth.xml      -> verifikasi Bing Webmaster
+├── llms.txt              -> metadata untuk AI crawler
+├── 404.html              -> halaman 404
+│
+├── icons/                -> favicon & icon PWA
+│
+├── blogs/                -> artikel SEO
+│   ├── index.html
+│   ├── bot-whatsapp-multi-device/
+│   ├── bot-whatsapp-tanpa-vps/
+│   └── cara-membuat-bot-whatsapp-gratis/
+│
+├── docs/                 -> dokumentasi penggunaan Polar
+│   ├── index.html
+│   ├── getting-started/
+│   ├── account/
+│   ├── dashboard/
+│   ├── claim-server/
+│   ├── pairing-whatsapp/
+│   ├── scripts/
+│   ├── polar-coin/
+│   └── troubleshooting/
+│
+├── about/                -> halaman About
+├── contact/              -> halaman Contact
+├── community/            -> halaman Community
+├── changelog/            -> changelog project
+├── compare/              -> halaman perbandingan
+├── faq/                  -> FAQ
+├── guides/               -> panduan umum
+├── media/                -> media / press kit
+├── security/             -> security policy
+├── status/               -> status layanan
+└── terms/                -> Terms of Service
+```
 ## Fitur Tambahan (di luar auth/dashboard dasar)
 
 - **Riwayat transaksi koin**: setiap perubahan `coins` di `polar_users` (earn, claim session, manual adjust) dicatat ke tabel `polar_coin_logs` lewat helper `logCoinTransaction()` di server.js. Endpoint: `GET /api/coins/history`. **Kalau nambah cara baru buat ubah koin, WAJIB panggil `logCoinTransaction()` juga**, biar riwayatnya konsisten.
@@ -44,6 +83,11 @@ public/
 - **Customer Service & Privacy Policy**: nomor WA CS (`6285715294026`) di-hardcode langsung di HTML (`dashboard.html`, `login.html`, `privacy.html`) karena itu info publik, bukan secret — sengaja gak ditaruh di env var biar gak perlu templating tambahan di semua halaman. Halaman kebijakan privasi ada di `public/privacy.html`, diakses lewat `/privacy` (clean URL, sama pola kayak `/login` & `/dashboard`).
 - **Consent privacy policy wajib**: checkbox "Saya setuju Kebijakan Privasi" wajib dicentang sebelum login/register (validasi di frontend `login.html`, DAN divalidasi ulang di backend khusus pas register — field `privacyAccepted` di body request, kalau `false`/kosong balikin 400). Timestamp consent disimpen di `polar_users.privacy_accepted_at` pas register. Kalau nanti ada halaman auth baru, jangan lupa checkbox ini + validasi backend-nya.
 - **Loading UX**: gak ada loading indicator sama sekali (bukan splash, bukan top progress bar, bukan skeleton, bukan spinner tombol) — sengaja dihapus semua atas permintaan owner. Tombol tetep di-`disable` selama request berlangsung (mencegah double-submit), tapi teks/icon-nya gak berubah. Konten langsung dirender begitu fetch selesai. **Jangan nambahin loading indicator lagi kecuali diminta eksplisit.**
+- **Redeem code + Admin panel**: user bisa masukin kode promo di section "Redeem Kode" buat dapet coin gratis (`POST /api/redeem`). Admin (akun dengan `is_admin = true` di `polar_users`, di-set manual lewat Supabase Table Editor, gak ada UI buat toggle ini) bisa bikin/nonaktifin/hapus kode lewat `/admin` (halaman `public/admin.html`, **sengaja gak dilink dari sidebar dashboard** — cuma bisa diakses kalau tau URL-nya langsung, dan tetep di-gate lewat cek `is_admin` via `/api/me` di JS-nya). Satu user cuma bisa redeem satu kode yang sama sekali (dicegah lewat unique constraint di `polar_redeem_logs`).
+- **Event/promo**: admin bikin event (judul, deskripsi, thumbnail URL, tanggal mulai/berakhir, link + label tombol) lewat tab "Event" di `/admin`. Event otomatis ilang dari `GET /api/events` begitu lewat `end_date` (dicek server-side, bukan cuma disembunyiin di frontend). Muncul di dashboard user sebagai card di section "EVENT" + banner teaser kecil di Home kalau ada event aktif.
+- **Admin panel (`/admin`) sekarang punya 7 tab**: Kode Redeem, Event, Script, User (cari user by nama/email, lihat coin & auth provider, tambah/kurang coin manual lewat `POST /api/admin/users/:id/adjust-coins` — otomatis kecatet ke `polar_coin_logs` juga), **Feedback**, **Req. Script**, **Sponsor**. Tiga terakhir itu inbox submission dari user (`polar_feedback`, `polar_script_requests`, `polar_sponsor_requests`) — masing-masing punya status (`new`/`resolved`/dst), admin bisa update status atau hapus. Query admin-nya pakai PostgREST embed (`?select=*,polar_users(name,email,avatar)`) buat sekalian narik data user yang submit tanpa query terpisah.
+- **Form Feedback/Request Script/Sponsor** ada di dashboard user (perlu login, gak ada versi publik/anonim). Semua submission otomatis kebawa `user_id` dari JWT, gak perlu isi nama/email manual (kecuali Sponsor yang tetep minta kontak eksplisit karena bisa aja beda dari akun Polar-nya, misal WA bisnis).
+- **Tool cek UUID server**: di form tambah/edit Script (tab Script) ada tombol "Cek Server & UUID dari Panel" — manggil `POST /api/admin/check-uuid` (server-side, ngehit endpoint `{panel}/api/client` Pterodactyl pakai API key yang diisi di form), nampilin semua server yang keakses beserta UUID-nya, admin tinggal klik "Pakai" buat auto-isi field UUID. Ini butuh lewat backend karena Pterodactyl biasanya nolak request cross-origin langsung dari browser (CORS).
 
 ## Konvensi Penting
 
@@ -69,7 +113,9 @@ Kolom penting di `polar_users`: `id, email (unique), name, avatar, coins, passwo
 
 `polar_sessions` sekarang direlasikan via `user_id` (bukan `fingerprint` kayak versi PHP lama). Kolom `script` isinya salah satu dari: `phoenix_md`, `ourin_md`, `ourin_md_deluxe`.
 
-**Server status monitoring**: ada 3 server Pterodactyl terpisah yang di-cek (`/api/server-status`): Phoenix, Ourin, Ourin Deluxe — masing-masing punya panel/API key/UUID sendiri di env var (`PHOENIX_PANEL`/`OURIN_PANEL`/`OURIN_DELUXE_PANEL`, dst). Kalau env var panel spesifik gak diisi, fallback ke `PTERO_PANEL`. Kalau nambah script/server baru lagi ke depannya, ikutin pola yang sama: env var panel+key+uuid sendiri, tambahin ke `checkServer()` call di `/api/server-status`, tambahin card status & select-box script baru di `dashboard.html`, update `setStatusUI()` call & pembagi online/offline di `dashboard.js`.
+**Server status monitoring**: dulu 3 script (Phoenix/Ourin/Ourin Deluxe) hardcode di env var, **sekarang full dinamis dari tabel `polar_scripts`**, dikelola admin lewat tab "Script" di `/admin`. Server.js gak lagi punya `PHOENIX_PANEL`/`OURIN_PANEL`/dst di env — semua panel URL, API key, dan UUID Pterodactyl disimpen di database. `GET /api/scripts` (dipanggil dashboard buat render pilihan script di form Claim) cuma balikin field aman (`script_key`, `display_name`, `subtitle`, `icon`) — TIDAK PERNAH balikin `panel_url`/`api_key`/`server_uuid` ke client biasa, itu cuma kebuka lewat `/api/admin/scripts` yang di-gate `adminMiddleware`. `GET /api/server-status` (publik, dipanggil buat halaman Status) query semua script aktif dari DB, cek status live ke tiap panel-nya, balikin array. Icon di kolom `icon` bisa berupa class Font Awesome (`fa-robot`) atau URL gambar (mulai dengan `http`) — dirender beda di frontend (`renderScriptIcon()` di `dashboard.js`, ada juga versi mirip di `admin.html`).
+
+**Kalau nambah/ubah/hapus script bot, HARUS lewat admin panel** (`/admin` → tab Script), bukan edit kode atau env var lagi. `script_key` yang di-generate harus konsisten dipakai sebagai value di `polar_sessions.script`.
 
 `polar_coin_logs` (tabel baru): `id, user_id, amount (+/-), reason, balance_after, created_at` — log tiap perubahan koin, dibuat otomatis lewat `logCoinTransaction()`, jangan di-insert manual dari tempat lain.
 
@@ -87,9 +133,13 @@ Kolom penting di `polar_users`: `id, email (unique), name, avatar, coins, passwo
 | `/api/sessions` | GET/POST | ✓ | List / claim server bot |
 | `/api/sessions/:id` | DELETE | ✓ | Hapus session |
 | `/api/coins/history` | GET | ✓ | Ambil 50 riwayat transaksi koin terakhir |
-| `/api/server-status` | GET | - | Cek status Phoenix & Ourin via Pterodactyl API |
+| `/api/scripts` | GET | ✓ | Daftar script aktif buat pilihan di form Claim (safe fields aja) |
+| `/api/server-status` | GET | - | Cek status live semua script aktif dari database |
 | `/api/earn/start` | GET | ✓ | Set `earn_flag`, redirect ke Safelinku |
 | `/api/earn/callback` | GET | ✓ | Destination Safelinku, tambah +1 coin |
+| `/api/redeem` | POST | ✓ | Tukar kode promo jadi Polar Coin |
+| `/api/events` | GET | ✓ | Daftar event aktif & belum expired |
+| `/api/admin/*` | GET/POST/PATCH/DELETE | ✓ + admin | Kelola kode redeem, event, script, user (lihat `server.js` bagian ADMIN) |
 
 ## Known Gaps / Belum Selesai
 
