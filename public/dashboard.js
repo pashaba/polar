@@ -105,6 +105,7 @@ function closeChannelPopup() {
 document.addEventListener('DOMContentLoaded', async () => {
   await loadMe();
   renderPackages();
+  renderFeedbackStars();
   await loadScripts();
   await Promise.all([loadSessions(), loadServerStatus()]);
   loadCoinHistory();
@@ -479,6 +480,108 @@ document.addEventListener('DOMContentLoaded', () => {
     if (e.target === this) closeChannelPopup();
   });
 });
+
+// ============================================================
+// FEEDBACK
+// ============================================================
+let selectedRating = 0;
+
+function renderFeedbackStars() {
+  const container = document.getElementById('feedbackStars');
+  if (!container || container.dataset.rendered) return;
+  container.dataset.rendered = 'true';
+  container.innerHTML = [1, 2, 3, 4, 5].map(i => `<i class="fa-star far" style="cursor:pointer;color:var(--gold);" onclick="setRating(${i})" id="star-${i}"></i>`).join('');
+}
+
+function setRating(n) {
+  selectedRating = n;
+  for (let i = 1; i <= 5; i++) {
+    document.getElementById('star-' + i).className = i <= n ? 'fa-star fas' : 'fa-star far';
+  }
+}
+
+async function submitFeedback() {
+  const message = document.getElementById('feedbackMessage').value.trim();
+  if (!message) { showToast('💬 Tulis feedback dulu', 'error'); return; }
+
+  const btn = document.getElementById('feedbackBtn');
+  btn.disabled = true;
+  try {
+    const res = await fetch('/api/feedback', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+      body: JSON.stringify({ message, rating: selectedRating || null })
+    });
+    const data = await res.json();
+    if (!data.success) { showToast('❌ ' + data.message, 'error'); return; }
+    showToast('✅ Makasih atas feedback-nya! 🙏', 'success');
+    document.getElementById('feedbackMessage').value = '';
+    setRating(0);
+  } catch (e) {
+    showToast('❌ Gagal kirim feedback', 'error');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+// ============================================================
+// REQUEST SCRIPT
+// ============================================================
+async function submitScriptRequest() {
+  const scriptName = document.getElementById('reqScriptName').value.trim();
+  const referenceLink = document.getElementById('reqScriptLink').value.trim();
+  const reason = document.getElementById('reqScriptReason').value.trim();
+  if (!scriptName) { showToast('🤖 Isi nama script dulu', 'error'); return; }
+
+  const btn = document.getElementById('reqScriptBtn');
+  btn.disabled = true;
+  try {
+    const res = await fetch('/api/script-requests', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+      body: JSON.stringify({ scriptName, referenceLink, reason })
+    });
+    const data = await res.json();
+    if (!data.success) { showToast('❌ ' + data.message, 'error'); return; }
+    showToast('✅ Request kamu udah masuk!', 'success');
+    document.getElementById('reqScriptName').value = '';
+    document.getElementById('reqScriptLink').value = '';
+    document.getElementById('reqScriptReason').value = '';
+  } catch (e) {
+    showToast('❌ Gagal kirim request', 'error');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+// ============================================================
+// SPONSOR
+// ============================================================
+async function submitSponsor() {
+  const name = document.getElementById('sponsorName').value.trim();
+  const contact = document.getElementById('sponsorContact').value.trim();
+  const company = document.getElementById('sponsorCompany').value.trim();
+  const message = document.getElementById('sponsorMessage').value.trim();
+  if (!name || !contact) { showToast('🤝 Nama & kontak wajib diisi', 'error'); return; }
+
+  const btn = document.getElementById('sponsorBtn');
+  btn.disabled = true;
+  try {
+    const res = await fetch('/api/sponsor', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+      body: JSON.stringify({ name, contact, company, message })
+    });
+    const data = await res.json();
+    if (!data.success) { showToast('❌ ' + data.message, 'error'); return; }
+    showToast('✅ Pengajuan sponsor terkirim, makasih!', 'success');
+    document.getElementById('sponsorName').value = '';
+    document.getElementById('sponsorContact').value = '';
+    document.getElementById('sponsorCompany').value = '';
+    document.getElementById('sponsorMessage').value = '';
+  } catch (e) {
+    showToast('❌ Gagal kirim pengajuan', 'error');
+  } finally {
+    btn.disabled = false;
+  }
+}
 
 // ============================================================
 // REDEEM CODE
