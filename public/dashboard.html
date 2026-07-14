@@ -86,6 +86,9 @@
   <a href="#" class="nav-link" onclick="navTo('sessions'); toggleMenu();"><i class="fas fa-robot"></i> SESSIONS</a>
   <a href="#" class="nav-link" onclick="navTo('history'); toggleMenu();"><i class="fas fa-clock-rotate-left"></i> RIWAYAT KOIN</a>
   <a href="#" class="nav-link" onclick="navTo('redeem'); toggleMenu();"><i class="fas fa-ticket"></i> REDEEM KODE</a>
+  <a href="#" class="nav-link" onclick="navTo('feedback'); toggleMenu();"><i class="fas fa-comment-dots"></i> FEEDBACK</a>
+  <a href="#" class="nav-link" onclick="navTo('requestscript'); toggleMenu();"><i class="fas fa-square-plus"></i> REQUEST SCRIPT</a>
+  <a href="#" class="nav-link" onclick="navTo('sponsor'); toggleMenu();"><i class="fas fa-handshake"></i> SPONSOR</a>
   <a href="#" class="nav-link" onclick="navTo('profile'); toggleMenu();"><i class="fas fa-user"></i> PROFILE</a>
   <a href="#" class="nav-link" onclick="earnCoin()" style="background:var(--gold);"><i class="fas fa-coins" style="color:#111;"></i> EARN POLAR COIN</a>
   <a href="https://wa.me/6285715294026" target="_blank" class="nav-link" style="background:var(--green);color:#fff;"><i class="fab fa-whatsapp"></i> CUSTOMER SERVICE</a>
@@ -207,6 +210,60 @@
       <label style="font-size:11px;font-weight:800;color:var(--text-muted);display:block;margin-bottom:4px;text-transform:uppercase;">Kode Redeem</label>
       <input type="text" id="redeemCodeInput" placeholder="Contoh: POLAR2026" style="width:100%;padding:12px;background:#f0f0f0;border:var(--border-thick);box-shadow:inset 2px 2px 0px 0px #111;color:#111;font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px;">
       <button class="btn btn-orange btn-full" id="redeemBtn" onclick="redeemCode()"><i class="fas fa-ticket"></i> REDEEM SEKARANG</button>
+    </div>
+  </div>
+
+  <!-- FEEDBACK -->
+  <div id="sec-feedback" class="section">
+    <div style="text-align:center;margin-bottom:16px;">
+      <div class="slot-badge" style="background:var(--gold);color:#111;"><i class="fas fa-comment-dots"></i> SUARA KAMU PENTING</div>
+      <h1 style="font-weight:900;font-size:clamp(26px,6vw,36px);text-transform:uppercase;">KASIH <span style="background:var(--orange);color:#fff;padding:0 12px;transform:skew(-6deg);display:inline-block;border:var(--border-thick);box-shadow:var(--shadow-light);">FEEDBACK</span></h1>
+      <p style="color:var(--text-muted);font-size:13px;font-weight:500;">Ada saran, kritik, atau nemu bug? Kasih tau kami</p>
+    </div>
+    <div class="card">
+      <label style="font-size:11px;font-weight:800;color:var(--text-muted);display:block;margin-bottom:8px;text-transform:uppercase;">Rating (opsional)</label>
+      <div id="feedbackStars" style="display:flex;gap:8px;margin-bottom:16px;font-size:24px;"></div>
+      <label style="font-size:11px;font-weight:800;color:var(--text-muted);display:block;margin-bottom:4px;text-transform:uppercase;">Pesan Kamu</label>
+      <textarea id="feedbackMessage" placeholder="Ceritain di sini..." style="width:100%;min-height:100px;padding:12px;background:#f0f0f0;border:var(--border-thick);box-shadow:inset 2px 2px 0px 0px #111;color:#111;font-size:14px;font-weight:600;font-family:'Space Grotesk',sans-serif;margin-bottom:12px;resize:vertical;"></textarea>
+      <button class="btn btn-orange btn-full" id="feedbackBtn" onclick="submitFeedback()"><i class="fas fa-paper-plane"></i> KIRIM FEEDBACK</button>
+    </div>
+  </div>
+
+  <!-- REQUEST SCRIPT -->
+  <div id="sec-requestscript" class="section">
+    <div style="text-align:center;margin-bottom:16px;">
+      <div class="slot-badge" style="background:var(--gold);color:#111;"><i class="fas fa-square-plus"></i> USUL SCRIPT BARU</div>
+      <h1 style="font-weight:900;font-size:clamp(26px,6vw,36px);text-transform:uppercase;">REQUEST <span style="background:var(--orange);color:#fff;padding:0 12px;transform:skew(-6deg);display:inline-block;border:var(--border-thick);box-shadow:var(--shadow-light);">SCRIPT</span></h1>
+      <p style="color:var(--text-muted);font-size:13px;font-weight:500;">Mau script bot tertentu ditambahin? Kasih tau kami</p>
+    </div>
+    <div class="card">
+      <label style="font-size:11px;font-weight:800;color:var(--text-muted);display:block;margin-bottom:4px;text-transform:uppercase;">Nama Script</label>
+      <input type="text" id="reqScriptName" placeholder="Contoh: NeoFlare MD" style="width:100%;padding:12px;background:#f0f0f0;border:var(--border-thick);box-shadow:inset 2px 2px 0px 0px #111;color:#111;font-size:14px;font-weight:600;margin-bottom:12px;">
+      <label style="font-size:11px;font-weight:800;color:var(--text-muted);display:block;margin-bottom:4px;text-transform:uppercase;">Link Referensi (opsional)</label>
+      <input type="text" id="reqScriptLink" placeholder="https://github.com/..." style="width:100%;padding:12px;background:#f0f0f0;border:var(--border-thick);box-shadow:inset 2px 2px 0px 0px #111;color:#111;font-size:14px;font-weight:600;margin-bottom:12px;">
+      <label style="font-size:11px;font-weight:800;color:var(--text-muted);display:block;margin-bottom:4px;text-transform:uppercase;">Kenapa Pengen Script Ini?</label>
+      <textarea id="reqScriptReason" placeholder="Ceritain alasannya..." style="width:100%;min-height:80px;padding:12px;background:#f0f0f0;border:var(--border-thick);box-shadow:inset 2px 2px 0px 0px #111;color:#111;font-size:14px;font-weight:600;font-family:'Space Grotesk',sans-serif;margin-bottom:12px;resize:vertical;"></textarea>
+      <button class="btn btn-orange btn-full" id="reqScriptBtn" onclick="submitScriptRequest()"><i class="fas fa-paper-plane"></i> KIRIM REQUEST</button>
+    </div>
+  </div>
+
+  <!-- SPONSOR -->
+  <div id="sec-sponsor" class="section">
+    <div style="text-align:center;margin-bottom:16px;">
+      <div class="slot-badge" style="background:var(--gold);color:#111;"><i class="fas fa-handshake"></i> KERJA SAMA</div>
+      <h1 style="font-weight:900;font-size:clamp(26px,6vw,36px);text-transform:uppercase;">JADI <span style="background:var(--orange);color:#fff;padding:0 12px;transform:skew(-6deg);display:inline-block;border:var(--border-thick);box-shadow:var(--shadow-light);">SPONSOR</span></h1>
+      <p style="color:var(--text-muted);font-size:13px;font-weight:500;">Mau bantu biaya server atau kerja sama promosi? Isi form ini</p>
+    </div>
+    <div class="card">
+      <label style="font-size:11px;font-weight:800;color:var(--text-muted);display:block;margin-bottom:4px;text-transform:uppercase;">Nama</label>
+      <input type="text" id="sponsorName" placeholder="Nama kamu / perusahaan" style="width:100%;padding:12px;background:#f0f0f0;border:var(--border-thick);box-shadow:inset 2px 2px 0px 0px #111;color:#111;font-size:14px;font-weight:600;margin-bottom:12px;">
+      <label style="font-size:11px;font-weight:800;color:var(--text-muted);display:block;margin-bottom:4px;text-transform:uppercase;">Kontak (Email / WhatsApp)</label>
+      <input type="text" id="sponsorContact" placeholder="email@kamu.com atau 08xxxx" style="width:100%;padding:12px;background:#f0f0f0;border:var(--border-thick);box-shadow:inset 2px 2px 0px 0px #111;color:#111;font-size:14px;font-weight:600;margin-bottom:12px;">
+      <label style="font-size:11px;font-weight:800;color:var(--text-muted);display:block;margin-bottom:4px;text-transform:uppercase;">Perusahaan/Brand (opsional)</label>
+      <input type="text" id="sponsorCompany" placeholder="Nama brand" style="width:100%;padding:12px;background:#f0f0f0;border:var(--border-thick);box-shadow:inset 2px 2px 0px 0px #111;color:#111;font-size:14px;font-weight:600;margin-bottom:12px;">
+      <label style="font-size:11px;font-weight:800;color:var(--text-muted);display:block;margin-bottom:4px;text-transform:uppercase;">Pesan</label>
+      <textarea id="sponsorMessage" placeholder="Ceritain tawaran kerja samanya..." style="width:100%;min-height:80px;padding:12px;background:#f0f0f0;border:var(--border-thick);box-shadow:inset 2px 2px 0px 0px #111;color:#111;font-size:14px;font-weight:600;font-family:'Space Grotesk',sans-serif;margin-bottom:12px;resize:vertical;"></textarea>
+      <button class="btn btn-orange btn-full" id="sponsorBtn" onclick="submitSponsor()"><i class="fas fa-paper-plane"></i> KIRIM PENGAJUAN</button>
     </div>
   </div>
 
