@@ -76,6 +76,9 @@
     <button class="admin-tab-btn" onclick="switchTab('events')" id="tabBtn-events"><i class="fas fa-bullhorn"></i> Event</button>
     <button class="admin-tab-btn" onclick="switchTab('scripts')" id="tabBtn-scripts"><i class="fas fa-robot"></i> Script</button>
     <button class="admin-tab-btn" onclick="switchTab('users')" id="tabBtn-users"><i class="fas fa-users"></i> User</button>
+    <button class="admin-tab-btn" onclick="switchTab('feedback')" id="tabBtn-feedback"><i class="fas fa-comment-dots"></i> Feedback</button>
+    <button class="admin-tab-btn" onclick="switchTab('scriptrequests')" id="tabBtn-scriptrequests"><i class="fas fa-square-plus"></i> Req. Script</button>
+    <button class="admin-tab-btn" onclick="switchTab('sponsor')" id="tabBtn-sponsor"><i class="fas fa-handshake"></i> Sponsor</button>
   </div>
 
   <!-- ===== TAB: KODE REDEEM ===== -->
@@ -263,6 +266,27 @@
     <div id="usersList"></div>
   </div>
 
+  <!-- ===== TAB: FEEDBACK ===== -->
+  <div id="tab-feedback" class="admin-tab-section">
+    <h1 style="font-weight:900;font-size:22px;text-transform:uppercase;margin-bottom:4px;">Feedback User</h1>
+    <p style="color:var(--text-muted);font-size:13px;margin-bottom:20px;">Saran, kritik, laporan bug dari user</p>
+    <div id="feedbackAdminList"></div>
+  </div>
+
+  <!-- ===== TAB: REQUEST SCRIPT ===== -->
+  <div id="tab-scriptrequests" class="admin-tab-section">
+    <h1 style="font-weight:900;font-size:22px;text-transform:uppercase;margin-bottom:4px;">Request Script</h1>
+    <p style="color:var(--text-muted);font-size:13px;margin-bottom:20px;">Script yang diminta ditambahin sama user</p>
+    <div id="scriptRequestsAdminList"></div>
+  </div>
+
+  <!-- ===== TAB: SPONSOR ===== -->
+  <div id="tab-sponsor" class="admin-tab-section">
+    <h1 style="font-weight:900;font-size:22px;text-transform:uppercase;margin-bottom:4px;">Pengajuan Sponsor</h1>
+    <p style="color:var(--text-muted);font-size:13px;margin-bottom:20px;">Tawaran kerja sama/sponsor yang masuk</p>
+    <div id="sponsorAdminList"></div>
+  </div>
+
 </div>
 
 <div class="toast" id="toast"></div>
@@ -296,6 +320,9 @@ function switchTab(tab) {
   if (tab === 'events') loadEventsAdmin();
   if (tab === 'scripts') loadScriptsAdmin();
   if (tab === 'users') searchUsers();
+  if (tab === 'feedback') loadFeedbackAdmin();
+  if (tab === 'scriptrequests') loadScriptRequestsAdmin();
+  if (tab === 'sponsor') loadSponsorAdmin();
 }
 
 // ============================================================
@@ -794,6 +821,153 @@ async function adjustUserCoins(userId) {
 }
 
 checkAdminAccess();
+
+// ============================================================
+// FEEDBACK (admin)
+// ============================================================
+async function loadFeedbackAdmin() {
+  try {
+    const res = await fetch('/api/admin/feedback', { credentials: 'include' });
+    const data = await res.json();
+    if (data.success) renderFeedbackAdmin(data.feedback);
+  } catch (e) { console.error(e); }
+}
+
+function statusBadge(status) {
+  const map = { new: ['var(--red)', 'BARU'], read: ['var(--gold)', 'DIBACA'], resolved: ['var(--green)', 'SELESAI'], reviewing: ['var(--gold)', 'DITINJAU'], added: ['var(--green)', 'DITAMBAHIN'], rejected: ['var(--red)', 'DITOLAK'], contacted: ['var(--gold)', 'DIHUBUNGI'], closed: ['var(--green)', 'SELESAI'] };
+  const [color, label] = map[status] || ['var(--text-muted)', status.toUpperCase()];
+  return `<span class="mini-badge" style="color:${color};border-color:${color};">${label}</span>`;
+}
+
+function renderStars(n) {
+  if (!n) return '';
+  return '⭐'.repeat(n);
+}
+
+function renderFeedbackAdmin(items) {
+  const list = document.getElementById('feedbackAdminList');
+  if (!items || items.length === 0) {
+    list.innerHTML = '<p style="text-align:center;padding:16px;color:var(--text-muted);font-size:13px;">Belum ada feedback</p>';
+    return;
+  }
+  list.innerHTML = items.map(f => {
+    const user = f.polar_users;
+    return `
+      <div class="card" style="margin-bottom:10px;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
+          <div>
+            <div style="font-weight:900;font-size:13px;">${user ? user.name : 'User dihapus'} ${renderStars(f.rating)}</div>
+            <div style="font-size:11px;color:var(--text-muted);">${user ? user.email : '-'} • ${new Date(Number(f.created_at)).toLocaleDateString('id-ID')}</div>
+          </div>
+          ${statusBadge(f.status)}
+        </div>
+        <p style="font-size:13px;font-weight:500;margin-top:8px;color:var(--text-main);">${f.message}</p>
+        <div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:10px;">
+          ${f.status !== 'resolved' ? `<button class="btn btn-sm btn-success" onclick="updateStatus('feedback', ${f.id}, 'resolved')"><i class="fas fa-check"></i> Tandai Selesai</button>` : ''}
+          <button class="btn btn-sm btn-danger" onclick="deleteItem('feedback', ${f.id})"><i class="fas fa-trash"></i></button>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+// ============================================================
+// REQUEST SCRIPT (admin)
+// ============================================================
+async function loadScriptRequestsAdmin() {
+  try {
+    const res = await fetch('/api/admin/script-requests', { credentials: 'include' });
+    const data = await res.json();
+    if (data.success) renderScriptRequestsAdmin(data.requests);
+  } catch (e) { console.error(e); }
+}
+
+function renderScriptRequestsAdmin(items) {
+  const list = document.getElementById('scriptRequestsAdminList');
+  if (!items || items.length === 0) {
+    list.innerHTML = '<p style="text-align:center;padding:16px;color:var(--text-muted);font-size:13px;">Belum ada request script</p>';
+    return;
+  }
+  list.innerHTML = items.map(r => {
+    const user = r.polar_users;
+    return `
+      <div class="card" style="margin-bottom:10px;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
+          <div>
+            <div style="font-weight:900;font-size:14px;">${r.script_name}</div>
+            <div style="font-size:11px;color:var(--text-muted);">${user ? user.name + ' • ' + user.email : 'User dihapus'}</div>
+          </div>
+          ${statusBadge(r.status)}
+        </div>
+        ${r.reference_link ? `<a href="${r.reference_link}" target="_blank" style="font-size:11px;color:var(--orange);font-weight:700;display:block;margin-top:6px;word-break:break-all;">${r.reference_link}</a>` : ''}
+        ${r.reason ? `<p style="font-size:13px;font-weight:500;margin-top:6px;color:var(--text-main);">${r.reason}</p>` : ''}
+        <div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:10px;">
+          <button class="btn btn-sm btn-success" onclick="updateStatus('script-requests', ${r.id}, 'added')"><i class="fas fa-check"></i> Udah Ditambahin</button>
+          <button class="btn btn-sm btn-white" onclick="updateStatus('script-requests', ${r.id}, 'reviewing')">Ditinjau</button>
+          <button class="btn btn-sm btn-danger" onclick="updateStatus('script-requests', ${r.id}, 'rejected')">Tolak</button>
+          <button class="btn btn-sm btn-danger" onclick="deleteItem('script-requests', ${r.id})"><i class="fas fa-trash"></i></button>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+// ============================================================
+// SPONSOR (admin)
+// ============================================================
+async function loadSponsorAdmin() {
+  try {
+    const res = await fetch('/api/admin/sponsor', { credentials: 'include' });
+    const data = await res.json();
+    if (data.success) renderSponsorAdmin(data.sponsors);
+  } catch (e) { console.error(e); }
+}
+
+function renderSponsorAdmin(items) {
+  const list = document.getElementById('sponsorAdminList');
+  if (!items || items.length === 0) {
+    list.innerHTML = '<p style="text-align:center;padding:16px;color:var(--text-muted);font-size:13px;">Belum ada pengajuan sponsor</p>';
+    return;
+  }
+  list.innerHTML = items.map(s => `
+    <div class="card" style="margin-bottom:10px;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
+        <div>
+          <div style="font-weight:900;font-size:14px;">${s.name} ${s.company ? '— ' + s.company : ''}</div>
+          <div style="font-size:11px;color:var(--text-muted);font-family:monospace;">${s.contact}</div>
+        </div>
+        ${statusBadge(s.status)}
+      </div>
+      ${s.message ? `<p style="font-size:13px;font-weight:500;margin-top:8px;color:var(--text-main);">${s.message}</p>` : ''}
+      <div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:10px;">
+        <button class="btn btn-sm btn-white" onclick="updateStatus('sponsor', ${s.id}, 'contacted')"><i class="fas fa-phone"></i> Udah Dihubungi</button>
+        <button class="btn btn-sm btn-success" onclick="updateStatus('sponsor', ${s.id}, 'closed')"><i class="fas fa-check"></i> Selesai</button>
+        <button class="btn btn-sm btn-danger" onclick="deleteItem('sponsor', ${s.id})"><i class="fas fa-trash"></i></button>
+      </div>
+    </div>`).join('');
+}
+
+// ============================================================
+// HELPER GENERIC — status update & delete buat feedback/script-requests/sponsor
+// ============================================================
+const RELOAD_MAP = { feedback: loadFeedbackAdmin, 'script-requests': loadScriptRequestsAdmin, sponsor: loadSponsorAdmin };
+
+async function updateStatus(type, id, status) {
+  try {
+    await fetch(`/api/admin/${type}/${id}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+      body: JSON.stringify({ status })
+    });
+    RELOAD_MAP[type]?.();
+  } catch (e) { showToast('❌ Gagal update status', 'error'); }
+}
+
+async function deleteItem(type, id) {
+  if (!confirm('Hapus item ini?')) return;
+  try {
+    await fetch(`/api/admin/${type}/${id}`, { method: 'DELETE', credentials: 'include' });
+    showToast('✅ Dihapus', 'success');
+    RELOAD_MAP[type]?.();
+  } catch (e) { showToast('❌ Gagal hapus', 'error'); }
+}
 </script>
 </body>
 </html>
