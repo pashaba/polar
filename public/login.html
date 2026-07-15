@@ -35,6 +35,7 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <link rel="stylesheet" href="style.css">
 <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+<script src="i18n.js"></script>
 <script>
   (function() {
     const saved = localStorage.getItem('polar_theme');
@@ -45,107 +46,108 @@
 </head>
 <body class="page-fade-in">
 
-<button class="theme-toggle-btn" id="themeToggleBtn" onclick="toggleTheme()" style="position:fixed;top:16px;right:16px;z-index:50;"><i class="fas fa-moon" id="themeIcon"></i></button>
+<button class="theme-toggle-btn" id="themeToggleBtn" onclick="toggleTheme()" style="position:fixed;top:16px;right:60px;z-index:50;"><i class="fas fa-moon" id="themeIcon"></i></button>
+<button class="theme-toggle-btn lang-toggle-btn" onclick="toggleLang()" style="position:fixed;top:16px;right:16px;z-index:50;"><span class="lang-toggle-label">EN</span></button>
 
 <div class="auth-wrap">
 
   <!-- ===== LOGIN CARD ===== -->
   <div class="auth-card" id="loginCard">
     <div class="auth-avatar"><i class="fas fa-user"></i></div>
-    <h2>LOGIN</h2>
-    <p class="sub">Masuk ke akun Polar.web.id kamu</p>
+    <h2 data-i18n="login_title">LOGIN</h2>
+    <p class="sub" data-i18n="login_subtitle">Masuk ke akun Polar.web.id kamu</p>
 
     <div class="auth-error" id="loginError"></div>
 
     <form id="loginForm">
       <div class="auth-field">
-        <label>Email</label>
-        <input type="email" id="loginEmail" placeholder="email@gmail.com" required>
+        <label data-i18n="login_email_label">Email</label>
+        <input type="email" id="loginEmail" placeholder="email@gmail.com" data-i18n-placeholder="login_email_placeholder" required>
       </div>
       <div class="auth-field">
-        <label>Password</label>
-        <input type="password" id="loginPassword" placeholder="••••••••" required>
+        <label data-i18n="login_password_label">Password</label>
+        <input type="password" id="loginPassword" placeholder="••••••••" data-i18n-placeholder="login_password_placeholder" required>
       </div>
       <div class="cf-turnstile" id="turnstileLogin" data-sitekey="{{TURNSTILE_SITE_KEY}}" data-theme="auto" style="margin-bottom:14px;"></div>
       <div class="privacy-check">
         <input type="checkbox" id="loginPrivacyCheck">
-        <label for="loginPrivacyCheck">Saya udah baca & setuju sama <a href="/privacy" target="_blank">Kebijakan Privasi</a> Polar.web.id</label>
+        <label for="loginPrivacyCheck"><span data-i18n="login_privacy_check">Saya udah baca &amp; setuju sama</span> <a href="/privacy" target="_blank" data-i18n="privacy_label">Kebijakan Privasi</a> Polar.web.id</label>
       </div>
       <button type="submit" class="btn btn-orange btn-full" id="loginBtn">
-        <i class="fas fa-right-to-bracket"></i> LOGIN
+        <i class="fas fa-right-to-bracket"></i> <span data-i18n="login_btn">LOGIN</span>
       </button>
     </form>
 
-    <div class="auth-divider">ATAU</div>
+    <div class="auth-divider" data-i18n="login_or">ATAU</div>
 
     <a href="/api/auth/google" class="google-btn-login">
       <div style="display:flex;align-items:center;gap:12px;">
-        <div class="g-icon"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Google_%22G%22_logo.svg/250px-Google_%22G%22_logo.svg.png" alt="Google"></div>
+        <div class="g-icon"><img src="https://upload.wikimedia.org/wikipedia/commons/5/53/Google_%22G%22_Logo.svg" alt="Google"></div>
         <div>
-          <div style="font-size:14px;font-weight:900;">Login dengan Google</div>
-          <div style="font-size:11px;font-weight:500;color:var(--text-muted);">Aman & cepat</div>
+          <div style="font-size:14px;font-weight:900;" data-i18n="login_google_btn">Login dengan Google</div>
+          <div style="font-size:11px;font-weight:500;color:var(--text-muted);" data-i18n="login_google_sub">Aman & cepat</div>
         </div>
       </div>
       <i class="fas fa-chevron-right" style="color:#111;"></i>
     </a>
 
-    <div class="auth-switch">Belum punya akun? <a href="#" onclick="showRegister();return false;">Daftar di sini</a></div>
+    <div class="auth-switch"><span data-i18n="login_switch_text">Belum punya akun?</span> <a href="#" onclick="showRegister();return false;" data-i18n="login_switch_link">Daftar di sini</a></div>
   </div>
 
   <!-- ===== REGISTER CARD ===== -->
   <div class="auth-card" id="registerCard" style="display:none;">
     <div class="auth-avatar"><i class="fas fa-user-plus"></i></div>
-    <h2>DAFTAR</h2>
-    <p class="sub">Buat akun Polar.web.id baru pakai email</p>
+    <h2 data-i18n="register_title">DAFTAR</h2>
+    <p class="sub" data-i18n="register_subtitle">Buat akun Polar.web.id baru pakai email</p>
 
     <div class="auth-error" id="registerError"></div>
 
     <form id="registerForm">
       <div class="auth-field">
-        <label>Nama</label>
-        <input type="text" id="regName" placeholder="Nama kamu" required>
+        <label data-i18n="register_name_label">Nama</label>
+        <input type="text" id="regName" placeholder="Nama kamu" data-i18n-placeholder="register_name_placeholder" required>
       </div>
       <div class="auth-field">
-        <label>Email</label>
-        <input type="email" id="regEmail" placeholder="email@gmail.com" required>
+        <label data-i18n="register_email_label">Email</label>
+        <input type="email" id="regEmail" placeholder="email@gmail.com" data-i18n-placeholder="login_email_placeholder" required>
       </div>
       <div class="auth-field">
-        <label>Password</label>
-        <input type="password" id="regPassword" placeholder="Minimal 6 karakter" minlength="6" required>
+        <label data-i18n="register_password_label">Password</label>
+        <input type="password" id="regPassword" placeholder="Minimal 6 karakter" data-i18n-placeholder="register_password_placeholder" minlength="6" required>
       </div>
       <div class="cf-turnstile" id="turnstileRegister" data-sitekey="{{TURNSTILE_SITE_KEY}}" data-theme="auto" style="margin-bottom:14px;"></div>
       <div class="privacy-check">
         <input type="checkbox" id="regPrivacyCheck">
-        <label for="regPrivacyCheck">Saya udah baca & setuju sama <a href="/privacy" target="_blank">Kebijakan Privasi</a> Polar.web.id</label>
+        <label for="regPrivacyCheck"><span data-i18n="login_privacy_check">Saya udah baca &amp; setuju sama</span> <a href="/privacy" target="_blank" data-i18n="privacy_label">Kebijakan Privasi</a> Polar.web.id</label>
       </div>
       <button type="submit" class="btn btn-orange btn-full" id="registerBtn">
-        <i class="fas fa-user-plus"></i> DAFTAR
+        <i class="fas fa-user-plus"></i> <span data-i18n="register_btn">DAFTAR</span>
       </button>
     </form>
 
-    <div class="auth-divider">ATAU</div>
+    <div class="auth-divider" data-i18n="login_or">ATAU</div>
 
     <a href="/api/auth/google" class="google-btn-login">
       <div style="display:flex;align-items:center;gap:12px;">
-        <div class="g-icon"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Google_%22G%22_logo.svg/250px-Google_%22G%22_logo.svg.png" alt="Google"></div>
+        <div class="g-icon"><img src="https://upload.wikimedia.org/wikipedia/commons/5/53/Google_%22G%22_Logo.svg" alt="Google"></div>
         <div>
-          <div style="font-size:14px;font-weight:900;">Daftar dengan Google</div>
-          <div style="font-size:11px;font-weight:500;color:var(--text-muted);">Aman & cepat</div>
+          <div style="font-size:14px;font-weight:900;" data-i18n="register_google_btn">Daftar dengan Google</div>
+          <div style="font-size:11px;font-weight:500;color:var(--text-muted);" data-i18n="login_google_sub">Aman & cepat</div>
         </div>
       </div>
       <i class="fas fa-chevron-right" style="color:#111;"></i>
     </a>
 
-    <div class="auth-switch">Sudah punya akun? <a href="#" onclick="showLogin();return false;">Login di sini</a></div>
+    <div class="auth-switch"><span data-i18n="register_switch_text">Sudah punya akun?</span> <a href="#" onclick="showLogin();return false;" data-i18n="register_switch_link">Login di sini</a></div>
   </div>
 
 </div>
 
 <div style="text-align:center;padding:0 20px 24px;display:flex;flex-direction:column;gap:8px;align-items:center;">
   <a href="https://wa.me/6285715294026" target="_blank" style="display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:800;color:#111;text-decoration:none;border:var(--border-thick);box-shadow:var(--shadow-light);padding:6px 16px;background:#fff;">
-    <i class="fab fa-whatsapp" style="color:var(--green);"></i> Customer Service
+    <i class="fab fa-whatsapp" style="color:var(--green);"></i> <span data-i18n="cs_label">Customer Service</span>
   </a>
-  <a href="/privacy" style="font-size:11px;font-weight:600;color:var(--text-muted);text-decoration:underline;">Kebijakan Privasi</a>
+  <a href="/privacy" style="font-size:11px;font-weight:600;color:var(--text-muted);text-decoration:underline;" data-i18n="privacy_label">Kebijakan Privasi</a>
 </div>
 
 <div class="toast" id="toast"></div>
