@@ -64,6 +64,8 @@ const POLAR_I18N = {
     home_desc: 'Dapatkan server bot gratis. Claim sekarang sebelum slot habis!',
     home_btn_claim: 'CLAIM SEKARANG',
     home_btn_status: 'LIHAT STATUS',
+    home_btn_tutorial: 'MULAI TUTORIAL',
+    nav_tutorial: 'MULAI TUTORIAL',
 
     // ===== Claim =====
     claim_title_1: 'CLAIM',
@@ -219,6 +221,8 @@ const POLAR_I18N = {
     home_desc: 'Get a free bot server. Claim now before slots run out!',
     home_btn_claim: 'CLAIM NOW',
     home_btn_status: 'VIEW STATUS',
+    home_btn_tutorial: 'START TUTORIAL',
+    nav_tutorial: 'START TUTORIAL',
 
     // ===== Claim =====
     claim_title_1: 'CLAIM',
