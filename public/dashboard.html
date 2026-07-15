@@ -31,6 +31,22 @@
 
 <div class="toast" id="toast"></div>
 
+<div class="tutorial-overlay" id="tutorialOverlay">
+  <div class="tutorial-dim" id="tutorialDim"></div>
+  <div class="tutorial-spotlight-ring" id="tutorialRing"></div>
+  <i class="fas fa-arrow-up tutorial-arrow" id="tutorialArrow"></i>
+  <div class="tutorial-card" id="tutorialCard">
+    <span class="tutorial-step-badge" id="tutorialStepBadge">STEP 1/5</span>
+    <h4 id="tutorialTitle">Judul</h4>
+    <p id="tutorialDesc">Deskripsi</p>
+    <div class="tutorial-card-footer">
+      <button class="tutorial-skip" onclick="skipTutorial()">Lewati</button>
+      <div class="tutorial-dots" id="tutorialDots"></div>
+      <button class="btn btn-orange tutorial-next" id="tutorialNextBtn" onclick="nextTutorialStep()">Lanjut <i class="fas fa-arrow-right"></i></button>
+    </div>
+  </div>
+</div>
+
 <div class="channel-popup-overlay" id="channelPopupOverlay">
   <div class="channel-popup-box">
     <button class="channel-popup-close" onclick="closeChannelPopup()"><i class="fas fa-times"></i></button>
@@ -61,14 +77,14 @@
 </div>
 
 <nav class="navbar">
-  <div class="nav-brand"><span class="brand-icon">✦</span> POLAR.WEB.ID</div>
+  <div class="nav-brand" data-tut="brand"><span class="brand-icon">✦</span> POLAR.WEB.ID</div>
   <div class="nav-right">
-    <div class="coin-badge"><i class="fas fa-coins"></i> <span id="coinCount">0</span></div>
-    <div class="profile-btn" onclick="navTo('profile')">
+    <div class="coin-badge" data-tut="coin"><i class="fas fa-coins"></i> <span id="coinCount">0</span></div>
+    <div class="profile-btn" onclick="navTo('profile')" data-tut="profile">
       <img id="navAvatar" src="https://ui-avatars.com/api/?name=U" alt="Avatar">
       <span class="hide-mobile" id="navName">...</span>
     </div>
-    <button class="menu-btn" onclick="toggleMenu()"><i class="fas fa-bars"></i></button>
+    <button class="menu-btn" onclick="toggleMenu()" data-tut="menu"><i class="fas fa-bars"></i></button>
   </div>
 </nav>
 
@@ -84,17 +100,18 @@
   </div>
 
   <div class="sidebar-section-label" data-i18n="nav_section_main">Menu Utama</div>
-  <a href="#" class="nav-link" onclick="navTo('home'); toggleMenu();"><i class="fas fa-home"></i> <span data-i18n="nav_home">HOME</span></a>
-  <a href="#" class="nav-link" onclick="navTo('event'); toggleMenu();"><i class="fas fa-bullhorn"></i> <span data-i18n="nav_event">EVENT</span></a>
-  <a href="#" class="nav-link" onclick="navTo('status'); toggleMenu();"><i class="fas fa-server"></i> <span data-i18n="nav_status">STATUS</span></a>
-  <a href="#" class="nav-link" onclick="navTo('claim'); toggleMenu();"><i class="fas fa-download"></i> <span data-i18n="nav_claim">CLAIM</span></a>
-  <a href="#" class="nav-link" onclick="navTo('sessions'); toggleMenu();"><i class="fas fa-robot"></i> <span data-i18n="nav_sessions">SESSIONS</span></a>
+  <a href="#" class="nav-link" onclick="navTo('home'); toggleMenu();" data-tut="nav-home"><i class="fas fa-home"></i> <span data-i18n="nav_home">HOME</span></a>
+  <a href="#" class="nav-link" onclick="navTo('event'); toggleMenu();" data-tut="nav-event"><i class="fas fa-bullhorn"></i> <span data-i18n="nav_event">EVENT</span></a>
+  <a href="#" class="nav-link" onclick="navTo('status'); toggleMenu();" data-tut="nav-status"><i class="fas fa-server"></i> <span data-i18n="nav_status">STATUS</span></a>
+  <a href="#" class="nav-link" onclick="navTo('claim'); toggleMenu();" data-tut="nav-claim"><i class="fas fa-download"></i> <span data-i18n="nav_claim">CLAIM</span></a>
+  <a href="#" class="nav-link" onclick="navTo('sessions'); toggleMenu();" data-tut="nav-sessions"><i class="fas fa-robot"></i> <span data-i18n="nav_sessions">SESSIONS</span></a>
+  <a href="#" class="nav-link" onclick="toggleMenu(); setTimeout(startTutorial, 350);"><i class="fas fa-circle-question"></i> <span data-i18n="nav_tutorial">MULAI TUTORIAL</span></a>
 
   <div class="sidebar-section-label" data-i18n="nav_section_account">Akun Saya</div>
   <a href="#" class="nav-link" onclick="navTo('profile'); toggleMenu();"><i class="fas fa-user"></i> <span data-i18n="nav_profile">PROFILE</span></a>
   <a href="#" class="nav-link" onclick="navTo('history'); toggleMenu();"><i class="fas fa-clock-rotate-left"></i> <span data-i18n="nav_history">RIWAYAT KOIN</span></a>
   <a href="#" class="nav-link" onclick="navTo('redeem'); toggleMenu();"><i class="fas fa-ticket"></i> <span data-i18n="nav_redeem">REDEEM KODE</span></a>
-  <a href="#" class="nav-link" onclick="earnCoin()" style="background:var(--gold);"><i class="fas fa-coins" style="color:#111;"></i> <span data-i18n="nav_earn">EARN POLAR COIN</span></a>
+  <a href="#" class="nav-link" onclick="earnCoin()" style="background:var(--gold);" data-tut="nav-earn"><i class="fas fa-coins" style="color:#111;"></i> <span data-i18n="nav_earn">EARN POLAR COIN</span></a>
 
   <div class="sidebar-section-label" data-i18n="nav_section_other">Lainnya</div>
   <a href="#" class="nav-link" onclick="navTo('feedback'); toggleMenu();"><i class="fas fa-comment-dots"></i> <span data-i18n="nav_feedback">FEEDBACK</span></a>
@@ -117,6 +134,7 @@
       <div class="btn-group">
         <button class="btn btn-orange" onclick="navTo('claim')"><i class="fas fa-download"></i> <span data-i18n="home_btn_claim">CLAIM SEKARANG</span></button>
         <button class="btn btn-white" onclick="navTo('status')"><span data-i18n="home_btn_status">LIHAT STATUS</span> <i class="fas fa-arrow-right"></i></button>
+        <button class="btn btn-close-modal" onclick="startTutorial()" style="border:var(--border-thick);"><i class="fas fa-circle-question"></i> <span data-i18n="home_btn_tutorial">MULAI TUTORIAL</span></button>
       </div>
     </div>
     <div id="homeEventTeaser"></div>
