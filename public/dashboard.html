@@ -111,6 +111,7 @@
   <a href="#" class="nav-link" onclick="navTo('profile'); toggleMenu();"><i class="fas fa-user"></i> <span data-i18n="nav_profile">PROFILE</span></a>
   <a href="#" class="nav-link" onclick="navTo('history'); toggleMenu();"><i class="fas fa-clock-rotate-left"></i> <span data-i18n="nav_history">RIWAYAT KOIN</span></a>
   <a href="#" class="nav-link" onclick="navTo('redeem'); toggleMenu();"><i class="fas fa-ticket"></i> <span data-i18n="nav_redeem">REDEEM KODE</span></a>
+  <a href="#" class="nav-link" onclick="navTo('referral'); toggleMenu();"><i class="fas fa-user-plus"></i> <span data-i18n="nav_referral">AJAK TEMAN</span></a>
   <a href="#" class="nav-link" onclick="earnCoin()" style="background:var(--gold);" data-tut="nav-earn"><i class="fas fa-coins" style="color:#111;"></i> <span data-i18n="nav_earn">EARN POLAR COIN</span></a>
 
   <div class="sidebar-section-label" data-i18n="nav_section_other">Lainnya</div>
@@ -238,6 +239,38 @@
       <label style="font-size:11px;font-weight:800;color:var(--text-muted);display:block;margin-bottom:4px;text-transform:uppercase;" data-i18n="redeem_label">Kode Redeem</label>
       <input type="text" id="redeemCodeInput" placeholder="Contoh: POLAR2026" style="width:100%;padding:12px;background:#f0f0f0;border:var(--border-thick);box-shadow:inset 2px 2px 0px 0px #111;color:#111;font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px;">
       <button class="btn btn-orange btn-full" id="redeemBtn" onclick="redeemCode()"><i class="fas fa-ticket"></i> <span data-i18n="redeem_btn">REDEEM SEKARANG</span></button>
+    </div>
+  </div>
+
+  <!-- REFERRAL -->
+  <div id="sec-referral" class="section">
+    <div style="text-align:center;margin-bottom:16px;">
+      <div class="slot-badge" style="background:var(--gold);color:#111;"><i class="fas fa-gift"></i> <span data-i18n="referral_badge">AJAK, DAPET KOIN</span></div>
+      <h1 style="font-weight:900;font-size:clamp(26px,6vw,36px);text-transform:uppercase;"><span data-i18n="referral_title_1">AJAK</span> <span style="background:var(--orange);color:#fff;padding:0 12px;transform:skew(-6deg);display:inline-block;border:var(--border-thick);box-shadow:var(--shadow-light);" data-i18n="referral_title_2">TEMAN</span></h1>
+      <p style="color:var(--text-muted);font-size:13px;font-weight:500;" data-i18n="referral_desc">Undang teman pakai link kamu, dua-duanya dapet Polar Coin gratis!</p>
+    </div>
+
+    <div class="card" style="text-align:center;">
+      <div style="display:flex;justify-content:center;gap:20px;margin-bottom:16px;">
+        <div>
+          <div style="font-size:24px;font-weight:900;color:var(--orange);" id="referralCount">0</div>
+          <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;" data-i18n="referral_count_label">Teman Diundang</div>
+        </div>
+        <div style="width:2px;background:#111;"></div>
+        <div>
+          <div style="font-size:24px;font-weight:900;color:var(--gold);" id="referralBonus">0</div>
+          <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;" data-i18n="referral_bonus_label">Total Bonus Koin</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <label style="font-size:11px;font-weight:800;color:var(--text-muted);display:block;margin-bottom:8px;text-transform:uppercase;" data-i18n="referral_link_label">Link Referral Kamu</label>
+      <div style="display:flex;gap:8px;">
+        <input type="text" id="referralLinkInput" readonly style="flex:1;padding:12px;background:#f0f0f0;border:var(--border-thick);box-shadow:inset 2px 2px 0px 0px #111;color:#111;font-size:12px;font-weight:700;font-family:monospace;">
+        <button class="btn btn-orange" onclick="copyReferralLink()"><i class="fas fa-copy"></i></button>
+      </div>
+      <p style="font-size:11px;color:var(--text-muted);font-weight:600;margin-top:10px;" data-i18n="referral_explain">🎁 Kamu dapet +5 koin tiap orang yang daftar pakai link ini. Temanmu juga langsung dapet +2 koin bonus pas daftar!</p>
     </div>
   </div>
 
