@@ -1,966 +1,1136 @@
-// ============================================================
-// STATE
-// ============================================================
-let currentUser = null;
-let currentSessions = [];
-let selectedDays = 1;
-let selectedCoin = 1;
-const MAX_SESSIONS = 10;
+require('dotenv').config();
+const express = require('express');
+const cors = require('cors');
+const cookieParser = require('cookie-parser');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+const path = require('path');
+const fs = require('fs');
 
-const PACKAGES = [
-  { days: 1, coin: 1, label: '1 Hari', icon: 'fa-calendar-day' },
-  { days: 2, coin: 2, label: '2 Hari', icon: 'fa-calendar-week' },
-  { days: 4, coin: 3, label: '4 Hari', icon: 'fa-calendar-alt' },
-  { days: 10, coin: 10, label: '10 Hari', icon: 'fa-calendar-check' }
-];
+const app = express();
+app.use(express.json());
+app.use(cookieParser());
+app.use(cors({ origin: process.env.APP_URL || true, credentials: true }));
+app.use(express.static(path.join(__dirname, 'public')));
 
 // ============================================================
-// EVENTS
+// CLEAN URL ROUTES (gak perlu .html)
 // ============================================================
-async function loadEvents() {
+
+// Cek cepat status login dari cookie, dipakai buat nentuin redirect / login vs dashboard
+function isAuthenticated(req) {
+  const token = req.cookies?.polar_token;
+  if (!token) return false;
   try {
-    const res = await fetch('/api/events', { credentials: 'include' });
-    const data = await res.json();
-    if (!data.success) return;
-    renderEvents(data.events);
-    renderHomeEventTeaser(data.events);
-  } catch (e) {
-    console.error(e);
+    jwt.verify(token, process.env.JWT_SECRET);
+    return true;
+  } catch {
+    return false;
   }
 }
 
-function formatEventDate(ts) {
-  if (!ts) return '';
-  return new Date(Number(ts)).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' });
-}
+// Root: udah login -> langsung ke dashboard. Belum login -> ke halaman login.
+app.get('/', (req, res) => res.redirect(isAuthenticated(req) ? '/dashboard' : '/login'));
 
-function renderEvents(events) {
-  const list = document.getElementById('eventList');
-  if (!list) return;
+app.get('/dashboard', (req, res) => res.sendFile(path.join(__dirname, 'public', 'dashboard.html')));
 
-  if (!events || events.length === 0) {
-    list.innerHTML = `
-      <div class="card" style="text-align:center;padding:40px 16px;">
-        <div style="font-size:48px;margin-bottom:12px;opacity:.3;">📢</div>
-        <h3 style="font-weight:900;font-size:20px;">Belum Ada Event</h3>
-        <p style="color:var(--text-muted);font-size:13px;font-weight:500;margin-top:4px;">Pantau terus, event baru bakal muncul di sini</p>
-      </div>`;
-    return;
-  }
+// /login: kalau udah login, gak perlu liat form login lagi -> langsung ke dashboard
+// Kalau belum, pakai templating manual buat inject TURNSTILE_SITE_KEY (site key aman ditaruh di HTML, cuma secret key yang rahasia)
+app.get('/login', (req, res) => {
+  if (isAuthenticated(req)) return res.redirect('/dashboard');
+  let html = fs.readFileSync(path.join(__dirname, 'public', 'login.html'), 'utf8');
+  html = html.replace(/{{TURNSTILE_SITE_KEY}}/g, process.env.TURNSTILE_SITE_KEY || '');
+  res.send(html);
+});
 
-  list.innerHTML = events.map(ev => {
-    const dateRange = ev.event_date
-      ? `${formatEventDate(ev.event_date)}${ev.end_date ? ' – ' + formatEventDate(ev.end_date) : ''}`
-      : (ev.end_date ? `Berakhir ${formatEventDate(ev.end_date)}` : '');
+app.get('/privacy', (req, res) => res.sendFile(path.join(__dirname, 'public', 'privacy.html')));
 
-    return `
-      <div class="event-card">
-        ${ev.thumbnail_url ? `<img src="${ev.thumbnail_url}" class="event-card-thumb" alt="${ev.title}" onerror="this.style.display='none'">` : ''}
-        <div class="event-card-body">
-          <span class="event-card-badge">🔥 EVENT</span>
-          <h3>${ev.title}</h3>
-          ${dateRange ? `<div class="event-card-date"><i class="fas fa-calendar"></i> ${dateRange}</div>` : ''}
-          ${ev.description ? `<p>${ev.description}</p>` : ''}
-          ${ev.link_url ? `<a href="${ev.link_url}" target="_blank" class="btn btn-orange btn-full">${ev.link_label || 'Lihat Event'} <i class="fas fa-arrow-up-right-from-square"></i></a>` : ''}
-        </div>
-      </div>`;
-  }).join('');
-}
+app.get('/privacy.html', (req, res) => res.redirect(301, '/privacy'));
 
-function renderHomeEventTeaser(events) {
-  const teaser = document.getElementById('homeEventTeaser');
-  if (!teaser) return;
-  if (!events || events.length === 0) { teaser.innerHTML = ''; return; }
-  teaser.innerHTML = `
-    <div class="event-teaser-banner" onclick="navTo('event')">
-      <i class="fas fa-bullhorn"></i>
-      <span>Ada ${events.length} event baru! Tap buat lihat detailnya →</span>
-    </div>`;
-}
+app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin.html')));
+
+// Redirect permanen kalau ada yang masih akses .html langsung
+app.get('/dashboard.html', (req, res) => res.redirect(301, '/dashboard'));
+app.get('/login.html', (req, res) => res.redirect(301, '/login'));
+
+const {
+  SUPABASE_URL,
+  SUPABASE_KEY,
+  JWT_SECRET,
+  GOOGLE_CLIENT_ID,
+  GOOGLE_CLIENT_SECRET,
+  GOOGLE_REDIRECT_URI,
+  SAFELINK_URL,
+  APP_URL
+} = process.env;
+
+// Catatan: konfigurasi script bot (Phoenix, Ourin, dll) SEKARANG di database (tabel polar_scripts),
+// dikelola lewat admin panel (/admin), bukan lewat env var lagi kayak sebelumnya.
+
+const MAX_SESSIONS = Number(process.env.MAX_SESSIONS || 10);
+const REFERRAL_BONUS_REFERRER = 5;   // koin buat yang ngundang
+const REFERRAL_BONUS_NEW_USER = 2;   // koin bonus buat yang baru daftar lewat link referral
 
 // ============================================================
-// TUTORIAL SPOTLIGHT
+// SUPABASE HELPER
 // ============================================================
-const TUTORIAL_STEPS = [
-  { selector: '[data-tut="brand"]', title: 'Selamat Datang di Polar.web.id! 👋', desc: 'Ini logo Polar.web.id. Yuk kenalan dulu sama bagian-bagian penting di dashboard.', arrow: 'down' },
-  { selector: '[data-tut="coin"]', title: 'Polar Coin 🪙', desc: 'Ini saldo Polar Coin kamu. Coin dipakai untuk claim server bot WhatsApp.', arrow: 'down' },
-  { selector: '[data-tut="profile"]', title: 'Profil Kamu', desc: 'Tap di sini buat lihat profil, statistik, dan info akun kamu.', arrow: 'down' },
-  { selector: '[data-tut="menu"]', title: 'Menu Navigasi ☰', desc: 'Tombol ini buka menu utama buat pindah-pindah halaman dashboard.', arrow: 'down' }
-];
-let tutStep = 0;
-let tutSidebarOpened = false;
-
-function getTutorialSidebarSteps() {
-  return [
-    { selector: '[data-tut="nav-home"]', title: 'Home', desc: 'Halaman utama buat claim server dengan cepat.', arrow: 'left' },
-    { selector: '[data-tut="nav-event"]', title: 'Event', desc: 'Lihat event dan promo terbaru dari kami.', arrow: 'left' },
-    { selector: '[data-tut="nav-status"]', title: 'Status Server', desc: 'Pantau status semua script bot secara real-time.', arrow: 'left' },
-    { selector: '[data-tut="nav-claim"]', title: 'Claim Server', desc: 'Pilih paket, masukkan nomor WhatsApp, dan claim bot gratis di sini.', arrow: 'left' },
-    { selector: '[data-tut="nav-sessions"]', title: 'My Bots', desc: 'Lihat semua bot WhatsApp yang sudah kamu claim dan kelola statusnya.', arrow: 'left' },
-    { selector: '[data-tut="nav-earn"]', title: 'Earn Polar Coin', desc: 'Dapatkan Polar Coin gratis di sini buat claim lebih banyak server.', arrow: 'left' }
-  ];
-}
-
-function allTutorialSteps() {
-  return TUTORIAL_STEPS.concat(getTutorialSidebarSteps());
-}
-
-function positionTutorialStep(step) {
-  const el = document.querySelector(step.selector);
-  if (!el) { nextTutorialStep(); return; }
-
-  const rect = el.getBoundingClientRect();
-  const pad = 8;
-  const ring = document.getElementById('tutorialRing');
-  const arrow = document.getElementById('tutorialArrow');
-  const card = document.getElementById('tutorialCard');
-
-  ring.style.top = (rect.top - pad) + 'px';
-  ring.style.left = (rect.left - pad) + 'px';
-  ring.style.width = (rect.width + pad * 2) + 'px';
-  ring.style.height = (rect.height + pad * 2) + 'px';
-
-  const dim = document.getElementById('tutorialDim');
-  const top = rect.top - pad, left = rect.left - pad, right = rect.right + pad, bottom = rect.bottom + pad;
-  dim.style.clipPath = `polygon(
-      0 0, 100% 0, 100% 100%, 0 100%, 0 0,
-      ${left}px ${top}px, ${right}px ${top}px, ${right}px ${bottom}px, ${left}px ${bottom}px, ${left}px ${top}px
-  )`;
-
-  arrow.className = 'tutorial-arrow fas fa-arrow-' + (step.arrow === 'left' ? 'right' : 'up');
-  let cardTop, cardLeft, arrowTop, arrowLeft;
-
-  const vw = window.innerWidth;
-  const vh = window.innerHeight;
-  const isMobile = vw < 540;
-  const cardW = Math.min(260, vw - 24);
-
-  if (step.arrow === 'left') {
-    arrowTop = rect.top + rect.height / 2 - 13;
-    arrowLeft = rect.left - 38;
-
-    if (!isMobile) {
-      cardTop = rect.top + rect.height / 2 - 60;
-      cardLeft = rect.left - cardW - 20;
-      if (cardLeft < 10) {
-        cardLeft = rect.right + 20;
-        arrow.className = 'tutorial-arrow fas fa-arrow-left';
-        arrowLeft = rect.right + 8;
-      }
-    } else {
-      cardLeft = (vw - cardW) / 2;
-      cardTop = vh - 200;
-      if (rect.top > vh * 0.6) cardTop = rect.top - 180;
-      arrowTop = rect.bottom + 6;
-      arrowLeft = rect.left + rect.width / 2 - 13;
-      arrow.className = 'tutorial-arrow fas fa-arrow-up';
-    }
-  } else {
-    arrowTop = rect.bottom + 8;
-    arrowLeft = rect.left + rect.width / 2 - 13;
-    cardTop = rect.bottom + 40;
-    cardLeft = Math.max(10, Math.min(vw - cardW - 10, rect.left + rect.width / 2 - cardW / 2));
-    if (cardTop + 160 > vh) {
-      cardTop = rect.top - 160;
-      arrowTop = rect.top - 34;
-      arrow.className = 'tutorial-arrow fas fa-arrow-down';
-    }
-  }
-
-  cardTop = Math.max(10, Math.min(cardTop, vh - 180));
-  cardLeft = Math.max(10, Math.min(cardLeft, vw - cardW - 10));
-
-  card.style.width = cardW + 'px';
-  arrow.style.top = arrowTop + 'px';
-  arrow.style.left = arrowLeft + 'px';
-  card.style.top = cardTop + 'px';
-  card.style.left = cardLeft + 'px';
-
-  document.getElementById('tutorialTitle').textContent = step.title;
-  document.getElementById('tutorialDesc').textContent = step.desc;
-}
-
-function renderTutorialDots(total) {
-  const dotsEl = document.getElementById('tutorialDots');
-  dotsEl.innerHTML = '';
-  for (let i = 0; i < total; i++) {
-    const dot = document.createElement('span');
-    dot.className = 'tutorial-dot' + (i === tutStep ? ' active' : '');
-    dotsEl.appendChild(dot);
-  }
-}
-
-function showTutorialStep() {
-  const steps = allTutorialSteps();
-  if (tutStep >= steps.length) { finishTutorial(); return; }
-
-  if (tutStep >= TUTORIAL_STEPS.length && !tutSidebarOpened) {
-    document.getElementById('sidebar').classList.add('active');
-    document.getElementById('sidebarOverlay').classList.add('active');
-    tutSidebarOpened = true;
-  }
-
-  const total = steps.length;
-  document.getElementById('tutorialStepBadge').textContent = `STEP ${tutStep + 1}/${total}`;
-  document.getElementById('tutorialNextBtn').innerHTML = (tutStep === total - 1)
-    ? 'Selesai <i class="fas fa-check"></i>'
-    : 'Lanjut <i class="fas fa-arrow-right"></i>';
-  renderTutorialDots(total);
-
-  requestAnimationFrame(() => {
-    setTimeout(() => positionTutorialStep(steps[tutStep]), tutSidebarOpened && tutStep === TUTORIAL_STEPS.length ? 320 : 0);
+async function sb(method, endpoint, body) {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/${endpoint}`, {
+    method,
+    headers: {
+      'Content-Type': 'application/json',
+      apikey: SUPABASE_KEY,
+      Authorization: `Bearer ${SUPABASE_KEY}`,
+      Prefer: 'return=representation'
+    },
+    body: body ? JSON.stringify(body) : undefined
   });
+  const text = await res.text();
+  if (!res.ok) throw new Error(`Supabase ${res.status}: ${text.slice(0, 300)}`);
+  return text ? JSON.parse(text) : [];
 }
 
-function nextTutorialStep() {
-  tutStep++;
-  showTutorialStep();
+async function getUserByEmail(email) {
+  const rows = await sb('GET', `polar_users?email=eq.${encodeURIComponent(email)}&select=*`);
+  return rows[0] || null;
 }
 
-function startTutorial() {
-  tutStep = 0;
-  tutSidebarOpened = false;
-  document.getElementById('tutorialOverlay').classList.add('active');
-  showTutorialStep();
+async function getUserById(id) {
+  const rows = await sb('GET', `polar_users?id=eq.${id}&select=*`);
+  return rows[0] || null;
 }
 
-function skipTutorial() { finishTutorial(); }
-
-function finishTutorial() {
-  document.getElementById('tutorialOverlay').classList.remove('active');
-  if (tutSidebarOpened) {
-    document.getElementById('sidebar').classList.remove('active');
-    document.getElementById('sidebarOverlay').classList.remove('active');
-  }
+function sanitizeUser(u) {
+  return {
+    id: u.id,
+    name: u.name,
+    email: u.email,
+    avatar: u.avatar,
+    coins: u.coins,
+    auth_provider: u.auth_provider,
+    is_admin: !!u.is_admin
+  };
 }
 
-window.addEventListener('resize', () => {
-  const overlay = document.getElementById('tutorialOverlay');
-  if (overlay && overlay.classList.contains('active')) {
-    const steps = allTutorialSteps();
-    positionTutorialStep(steps[tutStep]);
-  }
-});
-
-// ============================================================
-// CHANNEL POPUP (ajakan join saluran WA)
-// ============================================================
-const CHANNEL_POPUP_COOLDOWN_DAYS = 7;
-
-function maybeShowChannelPopup() {
-  const lastDismissed = localStorage.getItem('polar_channel_popup_dismissed');
-  const now = Date.now();
-  if (lastDismissed && (now - Number(lastDismissed)) < CHANNEL_POPUP_COOLDOWN_DAYS * 24 * 60 * 60 * 1000) {
-    return;
-  }
-  setTimeout(() => {
-    document.getElementById('channelPopupOverlay')?.classList.add('active');
-  }, 1200);
-}
-
-function closeChannelPopup() {
-  document.getElementById('channelPopupOverlay')?.classList.remove('active');
-  localStorage.setItem('polar_channel_popup_dismissed', Date.now().toString());
-}
-
-// ============================================================
-// INIT
-// ============================================================
-document.addEventListener('DOMContentLoaded', async () => {
-  await loadMe();
-  renderPackages();
-  renderFeedbackStars();
-  await loadScripts();
-  await Promise.all([loadSessions(), loadServerStatus()]);
-  loadCoinHistory();
-  loadEvents();
-  loadReferral();
-  checkEarnCoinReturn();
-  maybeShowChannelPopup();
-  setInterval(loadMe, 30000);
-  setInterval(loadServerStatus, 30000);
-});
-
-// ============================================================
-// AUTH / ME
-// ============================================================
-async function loadMe() {
+async function logCoinTransaction(userId, amount, reason, balanceAfter) {
   try {
-    const res = await fetch('/api/me', { credentials: 'include' });
-    if (res.status === 401) {
-      window.location.href = '/login';
-      return;
-    }
-    const data = await res.json();
-    if (!data.success) {
-      window.location.href = '/login';
-      return;
-    }
-    currentUser = data.user;
-    renderUser();
-  } catch (e) {
-    console.error(e);
-  }
-}
-
-function renderUser() {
-  document.getElementById('body').classList.remove('locked-bg');
-  document.getElementById('coinCount').textContent = currentUser.coins;
-  document.getElementById('navAvatar').src = currentUser.avatar;
-  document.getElementById('navName').textContent = currentUser.name.split(' ')[0];
-  document.getElementById('claimInitial').textContent = currentUser.name.charAt(0).toUpperCase();
-  document.getElementById('claimName').textContent = currentUser.name;
-  document.getElementById('claimCoinDisplay').textContent = currentUser.coins;
-  document.getElementById('profileAvatar').src = currentUser.avatar;
-  document.getElementById('profileName').textContent = currentUser.name;
-  document.getElementById('profileEmail').textContent = currentUser.email;
-  document.getElementById('profileCoinDisplay').textContent = currentUser.coins;
-  document.getElementById('profileCoinStat').textContent = currentUser.coins;
-}
-
-async function logout() {
-  await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
-  window.location.href = '/login';
-}
-
-// ============================================================
-// TOAST / MODALS
-// ============================================================
-function showToast(message, type = 'info') {
-  const toast = document.getElementById('toast');
-  toast.textContent = message;
-  toast.className = 'toast ' + type;
-  toast.style.display = 'block';
-  clearTimeout(toast._timeout);
-  toast._timeout = setTimeout(() => { toast.style.display = 'none'; }, 4000);
-}
-
-function toggleMenu() {
-  document.getElementById('sidebar').classList.toggle('active');
-  document.getElementById('sidebarOverlay').classList.toggle('active');
-}
-
-// ============================================================
-// DARK MODE
-// ============================================================
-function applyThemeIcon() {
-  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-  const icon = document.getElementById('themeIcon');
-  if (icon) icon.className = isDark ? 'fas fa-sun' : 'fas fa-moon';
-}
-
-function toggleTheme() {
-  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-  if (isDark) {
-    document.documentElement.removeAttribute('data-theme');
-    localStorage.setItem('polar_theme', 'light');
-  } else {
-    document.documentElement.setAttribute('data-theme', 'dark');
-    localStorage.setItem('polar_theme', 'dark');
-  }
-  applyThemeIcon();
-}
-
-applyThemeIcon();
-
-function navTo(sectionId) {
-  document.querySelectorAll('.section').forEach(sec => sec.classList.remove('active'));
-  document.getElementById('sec-' + sectionId).classList.add('active');
-  window.scrollTo({ top: 0, behavior: 'smooth' });
-}
-
-// loading modal lama udah dihapus — sekarang cukup pakai top progress bar + spinner di tombol
-
-// ============================================================
-// SCRIPTS (dinamis dari database, dikelola admin)
-// ============================================================
-function renderScriptIcon(icon, style) {
-  const styleAttr = style || 'margin-bottom:6px;';
-  if (icon && icon.startsWith('http')) {
-    return `<img src="${icon}" style="width:26px;height:26px;object-fit:contain;${styleAttr}" onerror="this.style.display='none'">`;
-  }
-  return `<i class="fas ${icon || 'fa-robot'}" style="${styleAttr}"></i>`;
-}
-
-async function loadScripts(retryCount = 0) {
-  try {
-    const res = await fetch('/api/scripts', { credentials: 'include' });
-    const data = await res.json();
-    if (!data.success) throw new Error('load scripts failed');
-    renderScriptSelect(data.scripts);
-  } catch (e) {
-    console.error(e);
-    // Retry dikit kalau gagal (misal cold start server / koneksi lemot), biar gak nyangkut kosong selamanya
-    if (retryCount < 3) {
-      setTimeout(() => loadScripts(retryCount + 1), 2000);
-    }
-  }
-}
-
-function renderScriptSelect(scripts) {
-  const grid = document.getElementById('scriptSelectGrid');
-  if (!grid) return;
-
-  if (!scripts || scripts.length === 0) {
-    grid.innerHTML = `<p style="grid-column:1/-1;text-align:center;color:var(--text-muted);font-size:12px;font-weight:600;padding:12px;">Belum ada script tersedia</p>`;
-    return;
-  }
-
-  grid.innerHTML = scripts.map((s, i) => `
-    <div class="select-box ${i === 0 ? 'active' : ''}" onclick="selectScript(this)" data-script="${s.script_key}" id="scriptOption-${s.script_key}">
-      ${renderScriptIcon(s.icon)}
-      <h4>${s.display_name}</h4>
-      <p>${s.subtitle || ''}</p>
-    </div>
-  `).join('');
-}
-
-// ============================================================
-// PACKAGE / SCRIPT SELECT
-// ============================================================
-function renderPackages() {
-  const grid = document.getElementById('packageGrid');
-  grid.innerHTML = PACKAGES.map((pkg, i) => {
-    const isActive = currentUser.coins >= pkg.coin;
-    return `
-      <div class="select-box ${i === 0 ? 'active' : ''}" style="${!isActive ? 'opacity:.5;cursor:not-allowed;' : ''}"
-           onclick="${isActive ? `selectPackage(this, ${pkg.days}, ${pkg.coin})` : ''}">
-        <i class="fas ${pkg.icon}"></i>
-        <h4>${pkg.label}</h4>
-        <p style="font-size:11px;font-weight:700;">🪙 ${pkg.coin} Polar Coin</p>
-        ${!isActive ? '<p style="color:var(--red);font-size:9px;font-weight:700;margin-top:2px;">Koin tidak cukup</p>' : ''}
-      </div>`;
-  }).join('');
-}
-
-function selectScript(el) {
-  if (el.dataset.offline === 'true') {
-    showToast('⚠️ Script ini lagi offline, gak bisa dipilih dulu.', 'error');
-    return;
-  }
-  document.querySelectorAll('.select-box[data-script]').forEach(b => b.classList.remove('active'));
-  el.classList.add('active');
-}
-
-function selectPackage(el, days, coin) {
-  document.querySelectorAll('#packageGrid .select-box').forEach(b => b.classList.remove('active'));
-  el.classList.add('active');
-  selectedDays = days;
-  selectedCoin = coin;
-}
-
-// ============================================================
-// EARN COIN
-// ============================================================
-function earnCoin() {
-  window.location.href = '/api/earn/start';
-}
-
-// Cek balikan dari /api/earn/callback (?earn=success&coins=X / pending / expired / error)
-function checkEarnCoinReturn() {
-  const params = new URLSearchParams(window.location.search);
-  const earn = params.get('earn');
-  if (!earn) return;
-
-  history.replaceState(null, '', window.location.pathname);
-
-  if (earn === 'success') {
-    const coins = params.get('coins');
-    showToast(`🎉 +1 Polar Coin berhasil diklaim! Total: ${coins} 🪙`, 'gold');
-    if (currentUser) { currentUser.coins = Number(coins); renderUser(); renderPackages(); }
-    loadCoinHistory();
-  } else if (earn === 'pending') {
-    showToast('⏳ Selesaikan dulu earn coin yang sedang berjalan!', 'error');
-  } else if (earn === 'expired') {
-    showToast('⏰ Link kadaluarsa. Silakan earn coin lagi.', 'error');
-  } else if (earn === 'error') {
-    showToast('❌ Gagal klaim coin, coba lagi.', 'error');
-  }
-}
-
-// ============================================================
-// SESSIONS
-// ============================================================
-async function loadSessions() {
-  try {
-    const res = await fetch('/api/sessions', { credentials: 'include' });
-    const data = await res.json();
-    if (!data.success) return;
-    currentSessions = data.sessions;
-    renderSessions();
-  } catch (e) {
-    console.error(e);
-  }
-}
-
-function renderSessions() {
-  const total = currentSessions.length;
-  const free = MAX_SESSIONS - total;
-
-  document.getElementById('slotFreeHome').textContent = free;
-  document.getElementById('slotFreeClaim').textContent = free;
-  document.getElementById('sessionCountLabel').textContent = `${total} / ${MAX_SESSIONS}`;
-  document.getElementById('profileSessionCount').textContent = total;
-  document.getElementById('statTotal').textContent = total;
-  document.getElementById('statSlot').textContent = free;
-
-  const list = document.getElementById('sessionsList');
-  if (total === 0) {
-    list.innerHTML = `
-      <div class="card" style="text-align:center;padding:40px 16px;">
-        <div style="font-size:48px;margin-bottom:12px;opacity:.3;">🤖</div>
-        <h3 style="font-weight:900;font-size:20px;">Belum Ada Bot</h3>
-        <p style="color:var(--text-muted);font-size:13px;font-weight:500;margin-top:4px;">Claim server dulu untuk mulai menggunakan bot</p>
-        <button class="btn btn-orange" style="margin-top:16px;" onclick="navTo('claim')">CLAIM SEKARANG</button>
-      </div>`;
-    return;
-  }
-
-  list.innerHTML = currentSessions.map(s => {
-    const statusClass = s.status === 'online' ? 'bg-online' : (s.status === 'pending' ? 'bg-pending' : 'bg-offline');
-    const statusText = s.status === 'online' ? 'Online' : (s.status === 'pending' ? 'Pending' : 'Offline');
-    const showPairBtn = s.status === 'waiting_pair' || s.status === 'pending';
-    return `
-      <div class="card">
-        <div class="session-item">
-          <div>
-            <div class="session-phone"><i class="fab fa-whatsapp"></i> +${s.phone}</div>
-            <div style="font-size:9px;font-weight:700;color:var(--text-muted);margin-top:2px;">${s.script}</div>
-          </div>
-          <div class="badge-status ${statusClass}">${statusText}</div>
-        </div>
-        <div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:4px;">
-          ${showPairBtn ? `<button class="btn btn-sm btn-orange" onclick="openPairModal('${s.phone}')"><i class="fas fa-link"></i> Pairing</button>` : ''}
-          ${s.status === 'online' ? `<button class="btn btn-sm btn-success" onclick="showToast('Bot sedang online! ✅','success')"><i class="fas fa-circle"></i> Online</button>` : ''}
-          <button class="btn btn-sm btn-danger" onclick="deleteSession(${s.id}, '${s.phone}')"><i class="fas fa-trash"></i> Hapus</button>
-        </div>
-      </div>`;
-  }).join('');
-}
-
-async function createSessionWithCoin() {
-  const phoneRaw = document.getElementById('phoneInput').value.trim();
-  const scriptEl = document.querySelector('.select-box.active[data-script]');
-  const script = scriptEl ? scriptEl.dataset.script : 'phoenix_md';
-
-  if (scriptEl && scriptEl.dataset.offline === 'true') {
-    showToast('⚠️ Script ini lagi offline, pilih yang lain dulu.', 'error');
-    return;
-  }
-
-  if (!phoneRaw) { showToast('📱 Masukkan nomor WhatsApp', 'error'); return; }
-  if (currentUser.coins < selectedCoin) { showToast(`🪙 Polar Coin tidak cukup! Butuh ${selectedCoin} coin.`, 'error'); return; }
-  if (currentSessions.length >= MAX_SESSIONS) { showToast(`❌ Slot session penuh (maksimal ${MAX_SESSIONS})`, 'error'); return; }
-
-  let phone = phoneRaw.replace(/[^0-9]/g, '');
-  if (phone.startsWith('0')) phone = '62' + phone.substring(1);
-  if (!phone.startsWith('62')) phone = '62' + phone;
-  if (phone.length < 10) { showToast('📱 Nomor terlalu pendek', 'error'); return; }
-
-  const btn = document.getElementById('claimBtn');
-  btn.disabled = true;
-
-  try {
-    const res = await fetch('/api/sessions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ phone, script, days: selectedDays, coin: selectedCoin })
+    await sb('POST', 'polar_coin_logs', {
+      user_id: userId,
+      amount,
+      reason,
+      balance_after: balanceAfter,
+      created_at: Date.now()
     });
-    const data = await res.json();
-    if (!data.success) throw new Error(data.message || 'Gagal membuat session');
-
-    currentUser.coins = data.coins;
-    renderUser();
-    showToast(`✅ Server berhasil di-claim! ${selectedDays} hari aktif. 🎉`, 'success');
-    await loadSessions();
-    loadCoinHistory();
-    showPairingModal(phone);
   } catch (e) {
-    showToast('❌ ' + e.message, 'error');
-  } finally {
-    btn.disabled = false;
-    btn.innerHTML = '<i class="fas fa-rocket"></i> CLAIM SERVER SEKARANG';
+    console.error('Gagal catat riwayat koin:', e.message);
   }
 }
 
-async function deleteSession(id, phone) {
-  if (!confirm(`Hapus session +${phone}?`)) return;
+// ============================================================
+// CLOUDFLARE TURNSTILE (captcha)
+// ============================================================
+async function verifyTurnstile(token, ip) {
+  // Kalau secret key belum di-setup di env, jangan block login/register (biar gak ke-lock pas dev/testing)
+  if (!process.env.TURNSTILE_SECRET_KEY) return true;
+  if (!token) return false;
+
   try {
-    const res = await fetch(`/api/sessions/${id}`, { method: 'DELETE', credentials: 'include' });
-    const data = await res.json();
-    if (!data.success) throw new Error(data.message || 'Gagal hapus session');
-    showToast('✅ Session dihapus', 'success');
-    await loadSessions();
+    const r = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        secret: process.env.TURNSTILE_SECRET_KEY,
+        response: token,
+        remoteip: ip || ''
+      })
+    });
+    const data = await r.json();
+    return data.success === true;
   } catch (e) {
-    showToast('❌ ' + e.message, 'error');
+    console.error('Turnstile verify error:', e.message);
+    return false;
   }
 }
 
-// ============================================================
-// PAIRING MODAL
-// ============================================================
-let pairInterval = null;
-
-function showPairingModal(phone) {
-  document.getElementById('pairingCodeDisplay').textContent = 'Menunggu pairing code...';
-  document.getElementById('pairingOverlay').classList.add('active');
-
-  if (pairInterval) clearInterval(pairInterval);
-  pairInterval = setInterval(async () => {
-    try {
-      await loadSessions();
-      const s = currentSessions.find(x => x.phone === phone);
-      if (!s) return;
-      if (s.pairing_code) {
-        const code = s.pairing_code.match(/.{1,4}/g)?.join('-') || s.pairing_code;
-        document.getElementById('pairingCodeDisplay').textContent = code;
-      }
-      if (s.status === 'online') {
-        document.getElementById('pairingCodeDisplay').textContent = '✅ Bot Online!';
-        clearInterval(pairInterval);
-        setTimeout(closePairingModal, 2000);
-      }
-    } catch (e) { console.error(e); }
-  }, 3000);
+function getClientIp(req) {
+  return (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket?.remoteAddress || '';
 }
-
-function closePairingModal() {
-  if (pairInterval) clearInterval(pairInterval);
-  document.getElementById('pairingOverlay').classList.remove('active');
-}
-
-function copyPairingCode() {
-  const code = document.getElementById('pairingCodeDisplay').textContent;
-  if (code && !code.includes('Menunggu') && !code.includes('Online')) {
-    navigator.clipboard.writeText(code.replace(/-/g, ''));
-    showToast('✅ Kode disalin!', 'success');
-  }
-}
-
-function openPairModal(phone) {
-  showPairingModal(phone);
-}
-
-document.addEventListener('DOMContentLoaded', () => {
-  document.getElementById('pairingOverlay').addEventListener('click', function (e) {
-    if (e.target === this) closePairingModal();
-  });
-  document.getElementById('channelPopupOverlay')?.addEventListener('click', function (e) {
-    if (e.target === this) closeChannelPopup();
-  });
-});
 
 // ============================================================
 // REFERRAL
 // ============================================================
-async function loadReferral() {
-  try {
-    const res = await fetch('/api/referral', { credentials: 'include' });
-    const data = await res.json();
-    if (!data.success) return;
 
-    document.getElementById('referralCount').textContent = data.totalReferred;
-    document.getElementById('referralBonus').textContent = data.totalBonusEarned;
-    document.getElementById('referralLinkInput').value = `${window.location.origin}/login?ref=${data.referralCode}`;
+// Dipanggil sekali abis user baru ke-insert, buat kasih kode referral unik (format: POLAR<id>, dijamin unik karena id-nya unik)
+async function assignReferralCode(user) {
+  try {
+    const code = 'POLAR' + user.id;
+    const [updated] = await sb('PATCH', `polar_users?id=eq.${user.id}`, { referral_code: code });
+    return updated || { ...user, referral_code: code };
+  } catch (e) {
+    console.error('Gagal assign referral code:', e.message);
+    return user;
+  }
+}
+
+// Dipanggil abis user baru ke-insert (baik lokal maupun Google), kalau dia daftar lewat link referral orang lain
+async function applyReferral(newUser, refCode) {
+  if (!refCode) return;
+  try {
+    const rows = await sb('GET', `polar_users?referral_code=eq.${encodeURIComponent(refCode)}&select=*`);
+    const referrer = rows[0];
+    if (!referrer || referrer.id === newUser.id) return; // kode gak valid, atau nyoba refer diri sendiri
+
+    // Tandain siapa yang ngundang
+    await sb('PATCH', `polar_users?id=eq.${newUser.id}`, { referred_by: referrer.id });
+
+    // Bonus buat yang ngundang
+    const referrerNewCoins = (referrer.coins || 0) + REFERRAL_BONUS_REFERRER;
+    await sb('PATCH', `polar_users?id=eq.${referrer.id}`, { coins: referrerNewCoins });
+    await logCoinTransaction(referrer.id, REFERRAL_BONUS_REFERRER, `referral_bonus:${newUser.email}`, referrerNewCoins);
+
+    // Bonus buat yang baru daftar
+    const newUserCoins = (newUser.coins || 0) + REFERRAL_BONUS_NEW_USER;
+    await sb('PATCH', `polar_users?id=eq.${newUser.id}`, { coins: newUserCoins });
+    await logCoinTransaction(newUser.id, REFERRAL_BONUS_NEW_USER, 'referral_signup_bonus', newUserCoins);
+  } catch (e) {
+    console.error('Gagal proses referral:', e.message);
+  }
+}
+
+// ============================================================
+// AUTH HELPERS (JWT via httpOnly cookie)
+// ============================================================
+function signToken(user) {
+  return jwt.sign({ uid: user.id, email: user.email, name: user.name }, JWT_SECRET, { expiresIn: '7d' });
+}
+
+function setAuthCookie(res, token) {
+  res.cookie('polar_token', token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    maxAge: 7 * 24 * 60 * 60 * 1000
+  });
+}
+
+function authMiddleware(req, res, next) {
+  const token = req.cookies?.polar_token;
+  if (!token) return res.status(401).json({ success: false, message: 'Belum login' });
+  try {
+    req.user = jwt.verify(token, JWT_SECRET);
+    next();
+  } catch {
+    return res.status(401).json({ success: false, message: 'Session tidak valid, silakan login ulang' });
+  }
+}
+
+async function adminMiddleware(req, res, next) {
+  try {
+    const user = await getUserById(req.user.uid);
+    if (!user || !user.is_admin) {
+      return res.status(403).json({ success: false, message: 'Akses ditolak, khusus admin' });
+    }
+    next();
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+}
+
+// ============================================================
+// REGISTER — email + password
+// ============================================================
+app.post('/api/auth/register', async (req, res) => {
+  try {
+    const { email, password, name, captchaToken, privacyAccepted, referralCode } = req.body;
+
+    const captchaOk = await verifyTurnstile(captchaToken, getClientIp(req));
+    if (!captchaOk) {
+      return res.status(400).json({ success: false, message: 'Verifikasi captcha gagal, coba lagi.' });
+    }
+
+    if (!privacyAccepted) {
+      return res.status(400).json({ success: false, message: 'Kamu harus setuju sama Kebijakan Privasi dulu.' });
+    }
+
+    if (!email || !password) {
+      return res.status(400).json({ success: false, message: 'Email dan password wajib diisi' });
+    }
+    if (password.length < 6) {
+      return res.status(400).json({ success: false, message: 'Password minimal 6 karakter' });
+    }
+
+    const existing = await getUserByEmail(email);
+    if (existing) {
+      return res.status(409).json({ success: false, message: 'Email sudah terdaftar, silakan login' });
+    }
+
+    const password_hash = await bcrypt.hash(password, 10);
+    const displayName = name || email.split('@')[0];
+    const avatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=FF6B00&color=fff`;
+
+    const [user] = await sb('POST', 'polar_users', {
+      email,
+      name: displayName,
+      avatar,
+      password_hash,
+      auth_provider: 'local',
+      coins: 0,
+      created_at: Date.now(),
+      privacy_accepted_at: Date.now()
+    });
+
+    await assignReferralCode(user);
+    await applyReferral(user, referralCode);
+
+    // Ambil ulang data user (coins-nya mungkin udah ke-update kalau ada bonus referral)
+    const freshUser = await getUserById(user.id);
+
+    const token = signToken(freshUser);
+    setAuthCookie(res, token);
+    res.json({ success: true, user: sanitizeUser(freshUser) });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+// ============================================================
+// LOGIN — email + password
+// ============================================================
+app.post('/api/auth/login', async (req, res) => {
+  try {
+    const { email, password, captchaToken } = req.body;
+
+    const captchaOk = await verifyTurnstile(captchaToken, getClientIp(req));
+    if (!captchaOk) {
+      return res.status(400).json({ success: false, message: 'Verifikasi captcha gagal, coba lagi.' });
+    }
+
+    if (!email || !password) {
+      return res.status(400).json({ success: false, message: 'Email dan password wajib diisi' });
+    }
+
+    const user = await getUserByEmail(email);
+    if (!user || user.auth_provider !== 'local' || !user.password_hash) {
+      return res.status(401).json({ success: false, message: 'Akun ini belum daftar pakai password. Coba login Google.' });
+    }
+
+    const match = await bcrypt.compare(password, user.password_hash);
+    if (!match) {
+      return res.status(401).json({ success: false, message: 'Password salah' });
+    }
+
+    const token = signToken(user);
+    setAuthCookie(res, token);
+    res.json({ success: true, user: sanitizeUser(user) });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+// ============================================================
+// GOOGLE OAUTH
+// ============================================================
+app.get('/api/auth/google', (req, res) => {
+  const ref = (req.query.ref || '').toString().trim();
+  const url = 'https://accounts.google.com/o/oauth2/v2/auth?' + new URLSearchParams({
+    client_id: GOOGLE_CLIENT_ID,
+    redirect_uri: GOOGLE_REDIRECT_URI,
+    response_type: 'code',
+    scope: 'email profile',
+    access_type: 'online',
+    prompt: 'select_account',
+    state: ref
+  });
+  res.redirect(url);
+});
+
+app.get('/api/auth/google/callback', async (req, res) => {
+  try {
+    const { code, state } = req.query;
+    if (!code) return res.redirect('/login?error=no_code');
+
+    const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        code,
+        client_id: GOOGLE_CLIENT_ID,
+        client_secret: GOOGLE_CLIENT_SECRET,
+        redirect_uri: GOOGLE_REDIRECT_URI,
+        grant_type: 'authorization_code'
+      })
+    });
+    const tokenData = await tokenRes.json();
+    if (!tokenData.access_token) return res.redirect('/login?error=google_failed');
+
+    const userRes = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+      headers: { Authorization: `Bearer ${tokenData.access_token}` }
+    });
+    const g = await userRes.json();
+
+    let user = await getUserByEmail(g.email);
+    if (user) {
+      // Update profil terbaru dari Google, tapi jangan sentuh coins/password
+      const [updated] = await sb('PATCH', `polar_users?id=eq.${user.id}`, {
+        name: g.name || user.name,
+        avatar: g.picture || user.avatar,
+        google_id: g.id,
+        updated_at: Date.now()
+      });
+      user = updated || user;
+    } else {
+      const [created] = await sb('POST', 'polar_users', {
+        google_id: g.id,
+        name: g.name || 'User',
+        email: g.email,
+        avatar: g.picture || `https://ui-avatars.com/api/?name=${encodeURIComponent(g.name || 'User')}&background=FF6B00&color=fff`,
+        coins: 0,
+        auth_provider: 'google',
+        created_at: Date.now()
+      });
+      user = created;
+      await assignReferralCode(user);
+      if (state) await applyReferral(user, state);
+      user = await getUserById(user.id);
+    }
+
+    const token = signToken(user);
+    setAuthCookie(res, token);
+    res.redirect('/dashboard');
   } catch (e) {
     console.error(e);
+    res.redirect('/login?error=server_error');
   }
-}
-
-function copyReferralLink() {
-  const input = document.getElementById('referralLinkInput');
-  navigator.clipboard.writeText(input.value);
-  showToast('✅ Link referral disalin!', 'success');
-}
+});
 
 // ============================================================
-// FEEDBACK
+// LOGOUT
 // ============================================================
-let selectedRating = 0;
+app.post('/api/auth/logout', (req, res) => {
+  res.clearCookie('polar_token');
+  res.json({ success: true });
+});
 
-function renderFeedbackStars() {
-  const container = document.getElementById('feedbackStars');
-  if (!container || container.dataset.rendered) return;
-  container.dataset.rendered = 'true';
-  container.innerHTML = [1, 2, 3, 4, 5].map(i => `<i class="fa-star far" style="cursor:pointer;color:var(--gold);" onclick="setRating(${i})" id="star-${i}"></i>`).join('');
-}
+// ============================================================
+// ME
+// ============================================================
+app.get('/api/me', authMiddleware, async (req, res) => {
+  const user = await getUserById(req.user.uid);
+  if (!user) return res.status(404).json({ success: false, message: 'User tidak ditemukan' });
+  res.json({ success: true, user: sanitizeUser(user) });
+});
 
-function setRating(n) {
-  selectedRating = n;
-  for (let i = 1; i <= 5; i++) {
-    document.getElementById('star-' + i).className = i <= n ? 'fa-star fas' : 'fa-star far';
-  }
-}
-
-async function submitFeedback() {
-  const message = document.getElementById('feedbackMessage').value.trim();
-  if (!message) { showToast('💬 Tulis feedback dulu', 'error'); return; }
-
-  const btn = document.getElementById('feedbackBtn');
-  btn.disabled = true;
+// ============================================================
+// EARN COIN (gantiin earn-coin.php lama)
+// Flow: user tap "Earn" -> /api/earn/start set earn_flag=true & redirect ke Safelinku
+//       -> user selesai shortlink -> Safelinku redirect balik ke /api/earn/callback
+//       -> callback nambahin +1 coin, earn_flag=false, redirect ke dashboard
+// ============================================================
+app.get('/api/earn/start', authMiddleware, async (req, res) => {
   try {
-    const res = await fetch('/api/feedback', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
-      body: JSON.stringify({ message, rating: selectedRating || null })
-    });
-    const data = await res.json();
-    if (!data.success) { showToast('❌ ' + data.message, 'error'); return; }
-    showToast('✅ Makasih atas feedback-nya! 🙏', 'success');
-    document.getElementById('feedbackMessage').value = '';
-    setRating(0);
+    const user = await getUserById(req.user.uid);
+    // Selalu boleh mulai ulang, walau earn_flag sebelumnya masih true (misal user mencet back / gak nyelesain).
+    // Aman: coin cuma ke-kasih sekali per siklus, soalnya begitu /api/earn/callback berhasil, flag langsung direset ke false.
+    await sb('PATCH', `polar_users?id=eq.${user.id}`, { earn_flag: true });
+    res.redirect(SAFELINK_URL);
   } catch (e) {
-    showToast('❌ Gagal kirim feedback', 'error');
-  } finally {
-    btn.disabled = false;
+    console.error(e);
+    res.redirect('/dashboard?earn=error');
   }
-}
+});
 
-// ============================================================
-// REQUEST SCRIPT
-// ============================================================
-async function submitScriptRequest() {
-  const scriptName = document.getElementById('reqScriptName').value.trim();
-  const referenceLink = document.getElementById('reqScriptLink').value.trim();
-  const reason = document.getElementById('reqScriptReason').value.trim();
-  if (!scriptName) { showToast('🤖 Isi nama script dulu', 'error'); return; }
-
-  const btn = document.getElementById('reqScriptBtn');
-  btn.disabled = true;
+// NOTE: URL ini yang harus di-set sebagai "destination URL" di dashboard Safelinku,
+// bukan mengarah langsung ke /dashboard, supaya coin ke-add dulu sebelum balik ke dashboard.
+app.get('/api/earn/callback', authMiddleware, async (req, res) => {
   try {
-    const res = await fetch('/api/script-requests', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
-      body: JSON.stringify({ scriptName, referenceLink, reason })
-    });
-    const data = await res.json();
-    if (!data.success) { showToast('❌ ' + data.message, 'error'); return; }
-    showToast('✅ Request kamu udah masuk!', 'success');
-    document.getElementById('reqScriptName').value = '';
-    document.getElementById('reqScriptLink').value = '';
-    document.getElementById('reqScriptReason').value = '';
+    const user = await getUserById(req.user.uid);
+    if (!user.earn_flag) {
+      // flag ga aktif = bukan hasil dari /api/earn/start yang sah
+      return res.redirect('/dashboard?earn=expired');
+    }
+    const newCoins = (user.coins || 0) + 1;
+    await sb('PATCH', `polar_users?id=eq.${user.id}`, { coins: newCoins, earn_flag: false });
+    await logCoinTransaction(user.id, 1, 'earn', newCoins);
+    res.redirect(`/dashboard?earn=success&coins=${newCoins}`);
   } catch (e) {
-    showToast('❌ Gagal kirim request', 'error');
-  } finally {
-    btn.disabled = false;
+    console.error(e);
+    res.redirect('/dashboard?earn=error');
   }
-}
+});
 
-// ============================================================
-// SPONSOR
-// ============================================================
-async function submitSponsor() {
-  const name = document.getElementById('sponsorName').value.trim();
-  const contact = document.getElementById('sponsorContact').value.trim();
-  const company = document.getElementById('sponsorCompany').value.trim();
-  const message = document.getElementById('sponsorMessage').value.trim();
-  if (!name || !contact) { showToast('🤝 Nama & kontak wajib diisi', 'error'); return; }
-
-  const btn = document.getElementById('sponsorBtn');
-  btn.disabled = true;
+app.get('/api/referral', authMiddleware, async (req, res) => {
   try {
-    const res = await fetch('/api/sponsor', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
-      body: JSON.stringify({ name, contact, company, message })
+    const user = await getUserById(req.user.uid);
+    const referred = await sb('GET', `polar_users?referred_by=eq.${user.id}&select=id,name,avatar,created_at`);
+
+    res.json({
+      success: true,
+      referralCode: user.referral_code,
+      totalReferred: referred.length,
+      totalBonusEarned: referred.length * REFERRAL_BONUS_REFERRER,
+      referredUsers: referred
     });
-    const data = await res.json();
-    if (!data.success) { showToast('❌ ' + data.message, 'error'); return; }
-    showToast('✅ Pengajuan sponsor terkirim, makasih!', 'success');
-    document.getElementById('sponsorName').value = '';
-    document.getElementById('sponsorContact').value = '';
-    document.getElementById('sponsorCompany').value = '';
-    document.getElementById('sponsorMessage').value = '';
   } catch (e) {
-    showToast('❌ Gagal kirim pengajuan', 'error');
-  } finally {
-    btn.disabled = false;
+    res.status(500).json({ success: false, message: e.message });
   }
-}
+});
+
+// ============================================================
+// COINS
+// ============================================================
+app.post('/api/coins/update', authMiddleware, async (req, res) => {
+  try {
+    const { amount, reason } = req.body;
+    const user = await getUserById(req.user.uid);
+    const newCoins = Math.max(0, (user.coins || 0) + Number(amount));
+    await sb('PATCH', `polar_users?id=eq.${user.id}`, { coins: newCoins });
+    await logCoinTransaction(user.id, Number(amount), reason || 'manual_adjust', newCoins);
+    res.json({ success: true, coins: newCoins });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+app.get('/api/coins/history', authMiddleware, async (req, res) => {
+  try {
+    const rows = await sb('GET', `polar_coin_logs?user_id=eq.${req.user.uid}&order=created_at.desc&limit=50`);
+    res.json({ success: true, logs: rows });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
 
 // ============================================================
 // REDEEM CODE
 // ============================================================
-async function redeemCode() {
-  const input = document.getElementById('redeemCodeInput');
-  const code = input.value.trim();
-  if (!code) { showToast('🎫 Masukkan kode dulu', 'error'); return; }
-
-  const btn = document.getElementById('redeemBtn');
-  btn.disabled = true;
-
+app.post('/api/redeem', authMiddleware, async (req, res) => {
   try {
-    const res = await fetch('/api/redeem', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ code })
+    let { code } = req.body;
+    if (!code || !code.trim()) {
+      return res.status(400).json({ success: false, message: 'Masukkan kode redeem dulu' });
+    }
+    code = code.trim().toUpperCase();
+
+    const rows = await sb('GET', `polar_redeem_codes?code=eq.${encodeURIComponent(code)}&select=*`);
+    const codeRow = rows[0];
+
+    if (!codeRow || !codeRow.active) {
+      return res.status(400).json({ success: false, message: 'Kode gak valid atau udah gak aktif' });
+    }
+    if (codeRow.expires_at && Date.now() > Number(codeRow.expires_at)) {
+      return res.status(400).json({ success: false, message: 'Kode udah kadaluarsa' });
+    }
+    if (codeRow.used_count >= codeRow.max_uses) {
+      return res.status(400).json({ success: false, message: 'Kode udah mencapai batas pemakaian' });
+    }
+
+    const alreadyUsed = await sb('GET', `polar_redeem_logs?user_id=eq.${req.user.uid}&code_id=eq.${codeRow.id}&select=id`);
+    if (alreadyUsed.length > 0) {
+      return res.status(400).json({ success: false, message: 'Kamu udah pernah pakai kode ini' });
+    }
+
+    const user = await getUserById(req.user.uid);
+    const newCoins = (user.coins || 0) + Number(codeRow.coin_value);
+
+    await sb('PATCH', `polar_users?id=eq.${user.id}`, { coins: newCoins });
+    await sb('POST', 'polar_redeem_logs', { user_id: user.id, code_id: codeRow.id, redeemed_at: Date.now() });
+    await sb('PATCH', `polar_redeem_codes?id=eq.${codeRow.id}`, { used_count: codeRow.used_count + 1 });
+    await logCoinTransaction(user.id, Number(codeRow.coin_value), `redeem_code:${code}`, newCoins);
+
+    res.json({ success: true, coins: newCoins, coinsAdded: Number(codeRow.coin_value) });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+// ============================================================
+// ADMIN — kelola kode redeem
+// ============================================================
+app.get('/api/admin/codes', authMiddleware, adminMiddleware, async (req, res) => {
+  try {
+    const rows = await sb('GET', 'polar_redeem_codes?order=created_at.desc');
+    res.json({ success: true, codes: rows });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+app.post('/api/admin/codes', authMiddleware, adminMiddleware, async (req, res) => {
+  try {
+    let { code, coinValue, maxUses, expiresAt } = req.body;
+    if (!code || !coinValue) {
+      return res.status(400).json({ success: false, message: 'Kode & nilai koin wajib diisi' });
+    }
+    code = code.trim().toUpperCase();
+
+    const existing = await sb('GET', `polar_redeem_codes?code=eq.${encodeURIComponent(code)}&select=id`);
+    if (existing.length > 0) {
+      return res.status(409).json({ success: false, message: 'Kode ini udah ada' });
+    }
+
+    const [created] = await sb('POST', 'polar_redeem_codes', {
+      code,
+      coin_value: Number(coinValue),
+      max_uses: Number(maxUses) || 1,
+      used_count: 0,
+      expires_at: expiresAt ? new Date(expiresAt).getTime() : null,
+      active: true,
+      created_at: Date.now()
     });
-    const data = await res.json();
-    if (!data.success) {
-      showToast('❌ ' + data.message, 'error');
-      return;
-    }
-    currentUser.coins = data.coins;
-    renderUser();
-    renderPackages();
-    showToast(`🎉 Berhasil! +${data.coinsAdded} Polar Coin`, 'gold');
-    input.value = '';
-    loadCoinHistory();
+
+    res.json({ success: true, code: created });
   } catch (e) {
-    showToast('❌ Gagal redeem kode, coba lagi', 'error');
-  } finally {
-    btn.disabled = false;
+    res.status(500).json({ success: false, message: e.message });
   }
-}
+});
 
-// ============================================================
-// COIN HISTORY
-// ============================================================
-const REASON_LABELS = {
-  earn: '🪙 Earn Coin (Shortlink)',
-  claim_session: '🤖 Claim Server',
-  manual_adjust: '⚙️ Penyesuaian Manual'
-};
-
-function formatHistoryReason(reason) {
-  if (reason.startsWith('claim_session:')) {
-    const script = reason.split(':')[1];
-    return `🤖 Claim Server (${script})`;
-  }
-  if (reason.startsWith('redeem_code:')) {
-    const code = reason.split(':')[1];
-    return `🎫 Redeem Kode (${code})`;
-  }
-  if (reason.startsWith('referral_bonus:')) {
-    return `👥 Bonus Ajak Teman`;
-  }
-  if (reason === 'referral_signup_bonus') {
-    return `🎁 Bonus Daftar via Referral`;
-  }
-  return REASON_LABELS[reason] || reason;
-}
-
-function formatHistoryDate(ts) {
-  const d = new Date(Number(ts));
-  return d.toLocaleString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-}
-
-async function loadCoinHistory() {
+app.patch('/api/admin/codes/:id', authMiddleware, adminMiddleware, async (req, res) => {
   try {
-    const res = await fetch('/api/coins/history', { credentials: 'include' });
-    const data = await res.json();
-    if (!data.success) return;
-    renderHistory(data.logs);
+    const { active } = req.body;
+    await sb('PATCH', `polar_redeem_codes?id=eq.${req.params.id}`, { active: !!active });
+    res.json({ success: true });
   } catch (e) {
-    console.error(e);
+    res.status(500).json({ success: false, message: e.message });
   }
-}
+});
 
-function renderHistory(logs) {
-  const list = document.getElementById('historyList');
-  if (!list) return;
-
-  if (!logs || logs.length === 0) {
-    list.innerHTML = `
-      <div style="text-align:center;padding:24px 0;">
-        <div style="font-size:36px;margin-bottom:8px;opacity:.3;">🪙</div>
-        <p style="color:var(--text-muted);font-size:13px;font-weight:600;">Belum ada riwayat transaksi</p>
-      </div>`;
-    return;
-  }
-
-  list.innerHTML = logs.map(log => {
-    const isPlus = log.amount > 0;
-    return `
-      <div class="history-item">
-        <div class="history-left">
-          <div class="history-icon ${isPlus ? 'plus' : 'minus'}"><i class="fas ${isPlus ? 'fa-plus' : 'fa-minus'}"></i></div>
-          <div>
-            <div class="history-reason">${formatHistoryReason(log.reason)}</div>
-            <div class="history-date">${formatHistoryDate(log.created_at)}</div>
-          </div>
-        </div>
-        <div class="history-amount ${isPlus ? 'plus' : 'minus'}">${isPlus ? '+' : ''}${log.amount} 🪙</div>
-      </div>`;
-  }).join('');
-}
-
-// ============================================================
-// SERVER STATUS
-// ============================================================
-async function loadServerStatus(retryCount = 0) {
+app.delete('/api/admin/codes/:id', authMiddleware, adminMiddleware, async (req, res) => {
   try {
-    const res = await fetch('/api/server-status');
-    const data = await res.json();
-    if (!data.success) throw new Error('load status failed');
-
-    renderStatusCards(data.scripts);
-    updateScriptAvailability(data.scripts);
-
-    const onlineCount = data.scripts.filter(s => s.online).length;
-    document.getElementById('statOnline').textContent = onlineCount;
-    document.getElementById('statOffline').textContent = data.scripts.length - onlineCount;
+    await sb('DELETE', `polar_redeem_codes?id=eq.${req.params.id}`);
+    res.json({ success: true });
   } catch (e) {
-    console.error(e);
-    if (retryCount < 3) {
-      setTimeout(() => loadServerStatus(retryCount + 1), 2000);
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+// ============================================================
+// EVENTS (publik — ditampilin ke semua user yang login)
+// ============================================================
+app.get('/api/events', authMiddleware, async (req, res) => {
+  try {
+    const now = Date.now();
+    const rows = await sb('GET', `polar_events?active=eq.true&order=event_date.asc.nullslast`);
+    const activeEvents = rows.filter(e => !e.end_date || Number(e.end_date) > now);
+    res.json({ success: true, events: activeEvents });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+// ============================================================
+// ADMIN — cek daftar server & UUID dari panel Pterodactyl (bantu isi form Script)
+// ============================================================
+app.post('/api/admin/check-uuid', authMiddleware, adminMiddleware, async (req, res) => {
+  try {
+    const { panelUrl, apiKey } = req.body;
+    if (!panelUrl || !apiKey) {
+      return res.status(400).json({ success: false, message: 'Panel URL & API key wajib diisi' });
     }
+
+    const cleanPanel = panelUrl.trim().replace(/\/$/, '');
+    const r = await fetch(`${cleanPanel}/api/client`, {
+      headers: { Authorization: `Bearer ${apiKey}`, Accept: 'application/json' }
+    });
+
+    if (!r.ok) {
+      const text = await r.text();
+      return res.status(400).json({ success: false, message: `Gagal konek ke panel (HTTP ${r.status}). Cek lagi Panel URL & API Key-nya.` });
+    }
+
+    const data = await r.json();
+    const servers = (data.data || []).map(s => ({
+      name: s.attributes.name,
+      identifier: s.attributes.identifier,
+      uuid: s.attributes.uuid,
+      node: s.attributes.node,
+      suspended: s.attributes.is_suspended
+    }));
+
+    res.json({ success: true, servers });
+  } catch (e) {
+    res.status(500).json({ success: false, message: 'Gagal konek ke panel: ' + e.message });
+  }
+});
+
+// ============================================================
+// ADMIN — kelola script bot (Phoenix, Ourin, dll)
+// ============================================================
+app.get('/api/admin/scripts', authMiddleware, adminMiddleware, async (req, res) => {
+  try {
+    const rows = await sb('GET', 'polar_scripts?order=sort_order.asc');
+    res.json({ success: true, scripts: rows });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+app.post('/api/admin/scripts', authMiddleware, adminMiddleware, async (req, res) => {
+  try {
+    const { scriptKey, displayName, subtitle, icon, panelUrl, apiKey, serverUuid, sortOrder } = req.body;
+    if (!scriptKey || !displayName || !panelUrl || !apiKey || !serverUuid) {
+      return res.status(400).json({ success: false, message: 'Script key, nama, panel URL, API key, dan UUID wajib diisi' });
+    }
+
+    const normalizedKey = scriptKey.trim().toLowerCase().replace(/[^a-z0-9_]/g, '_');
+
+    const existing = await sb('GET', `polar_scripts?script_key=eq.${encodeURIComponent(normalizedKey)}&select=id`);
+    if (existing.length > 0) {
+      return res.status(409).json({ success: false, message: 'Script key ini udah dipakai' });
+    }
+
+    const [created] = await sb('POST', 'polar_scripts', {
+      script_key: normalizedKey,
+      display_name: displayName.trim(),
+      subtitle: subtitle || '',
+      icon: (icon && icon.trim()) || 'fa-robot',
+      panel_url: panelUrl.trim(),
+      api_key: apiKey.trim(),
+      server_uuid: serverUuid.trim(),
+      active: true,
+      sort_order: Number(sortOrder) || 0,
+      created_at: Date.now()
+    });
+
+    res.json({ success: true, script: created });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+app.patch('/api/admin/scripts/:id', authMiddleware, adminMiddleware, async (req, res) => {
+  try {
+    const { displayName, subtitle, icon, panelUrl, apiKey, serverUuid, active, sortOrder } = req.body;
+    const patch = {};
+    if (displayName !== undefined) patch.display_name = displayName;
+    if (subtitle !== undefined) patch.subtitle = subtitle;
+    if (icon !== undefined) patch.icon = icon;
+    if (panelUrl !== undefined) patch.panel_url = panelUrl;
+    if (apiKey !== undefined) patch.api_key = apiKey;
+    if (serverUuid !== undefined) patch.server_uuid = serverUuid;
+    if (active !== undefined) patch.active = !!active;
+    if (sortOrder !== undefined) patch.sort_order = Number(sortOrder) || 0;
+
+    await sb('PATCH', `polar_scripts?id=eq.${req.params.id}`, patch);
+    res.json({ success: true });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+app.delete('/api/admin/scripts/:id', authMiddleware, adminMiddleware, async (req, res) => {
+  try {
+    await sb('DELETE', `polar_scripts?id=eq.${req.params.id}`);
+    res.json({ success: true });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+// ============================================================
+// ADMIN — kelola event
+// ============================================================
+app.get('/api/admin/events', authMiddleware, adminMiddleware, async (req, res) => {
+  try {
+    const rows = await sb('GET', 'polar_events?order=created_at.desc');
+    res.json({ success: true, events: rows });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+app.post('/api/admin/events', authMiddleware, adminMiddleware, async (req, res) => {
+  try {
+    const { title, description, thumbnailUrl, eventDate, endDate, linkUrl, linkLabel } = req.body;
+    if (!title || !title.trim()) {
+      return res.status(400).json({ success: false, message: 'Judul event wajib diisi' });
+    }
+
+    const [created] = await sb('POST', 'polar_events', {
+      title: title.trim(),
+      description: description || '',
+      thumbnail_url: thumbnailUrl || '',
+      event_date: eventDate ? new Date(eventDate).getTime() : null,
+      end_date: endDate ? new Date(endDate).getTime() : null,
+      link_url: linkUrl || '',
+      link_label: (linkLabel && linkLabel.trim()) || 'Lihat Event',
+      active: true,
+      created_at: Date.now()
+    });
+
+    res.json({ success: true, event: created });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+app.patch('/api/admin/events/:id', authMiddleware, adminMiddleware, async (req, res) => {
+  try {
+    const { title, description, thumbnailUrl, eventDate, endDate, linkUrl, linkLabel, active } = req.body;
+    const patch = {};
+    if (title !== undefined) patch.title = title;
+    if (description !== undefined) patch.description = description;
+    if (thumbnailUrl !== undefined) patch.thumbnail_url = thumbnailUrl;
+    if (eventDate !== undefined) patch.event_date = eventDate ? new Date(eventDate).getTime() : null;
+    if (endDate !== undefined) patch.end_date = endDate ? new Date(endDate).getTime() : null;
+    if (linkUrl !== undefined) patch.link_url = linkUrl;
+    if (linkLabel !== undefined) patch.link_label = linkLabel;
+    if (active !== undefined) patch.active = !!active;
+
+    await sb('PATCH', `polar_events?id=eq.${req.params.id}`, patch);
+    res.json({ success: true });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+app.delete('/api/admin/events/:id', authMiddleware, adminMiddleware, async (req, res) => {
+  try {
+    await sb('DELETE', `polar_events?id=eq.${req.params.id}`);
+    res.json({ success: true });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+// ============================================================
+// ADMIN — kelola user (list, cari, tambah/kurang coin)
+// ============================================================
+app.get('/api/admin/users', authMiddleware, adminMiddleware, async (req, res) => {
+  try {
+    const search = (req.query.search || '').trim();
+    let endpoint = 'polar_users?select=id,name,email,avatar,coins,auth_provider,is_admin,created_at&order=created_at.desc&limit=50';
+    if (search) {
+      endpoint += `&or=(email.ilike.*${encodeURIComponent(search)}*,name.ilike.*${encodeURIComponent(search)}*)`;
+    }
+    const rows = await sb('GET', endpoint);
+    res.json({ success: true, users: rows });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+app.post('/api/admin/users/:id/adjust-coins', authMiddleware, adminMiddleware, async (req, res) => {
+  try {
+    const { amount, reason } = req.body;
+    if (!amount || Number(amount) === 0) {
+      return res.status(400).json({ success: false, message: 'Jumlah coin wajib diisi (boleh minus buat ngurangin)' });
+    }
+
+    const targetUser = await getUserById(req.params.id);
+    if (!targetUser) {
+      return res.status(404).json({ success: false, message: 'User gak ketemu' });
+    }
+
+    const newCoins = Math.max(0, (targetUser.coins || 0) + Number(amount));
+    await sb('PATCH', `polar_users?id=eq.${targetUser.id}`, { coins: newCoins });
+    await logCoinTransaction(targetUser.id, Number(amount), `admin_adjust:${(reason && reason.trim()) || 'manual'}`, newCoins);
+
+    res.json({ success: true, coins: newCoins });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+// ============================================================
+// FEEDBACK (dari user)
+// ============================================================
+app.post('/api/feedback', authMiddleware, async (req, res) => {
+  try {
+    const { message, rating } = req.body;
+    if (!message || !message.trim()) {
+      return res.status(400).json({ success: false, message: 'Pesan feedback wajib diisi' });
+    }
+    await sb('POST', 'polar_feedback', {
+      user_id: req.user.uid,
+      message: message.trim(),
+      rating: rating ? Number(rating) : null,
+      status: 'new',
+      created_at: Date.now()
+    });
+    res.json({ success: true });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+app.get('/api/admin/feedback', authMiddleware, adminMiddleware, async (req, res) => {
+  try {
+    const rows = await sb('GET', 'polar_feedback?select=*,polar_users(name,email,avatar)&order=created_at.desc');
+    res.json({ success: true, feedback: rows });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+app.patch('/api/admin/feedback/:id', authMiddleware, adminMiddleware, async (req, res) => {
+  try {
+    const { status } = req.body;
+    await sb('PATCH', `polar_feedback?id=eq.${req.params.id}`, { status });
+    res.json({ success: true });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+app.delete('/api/admin/feedback/:id', authMiddleware, adminMiddleware, async (req, res) => {
+  try {
+    await sb('DELETE', `polar_feedback?id=eq.${req.params.id}`);
+    res.json({ success: true });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+// ============================================================
+// REQUEST SCRIPT (dari user)
+// ============================================================
+app.post('/api/script-requests', authMiddleware, async (req, res) => {
+  try {
+    const { scriptName, referenceLink, reason } = req.body;
+    if (!scriptName || !scriptName.trim()) {
+      return res.status(400).json({ success: false, message: 'Nama script wajib diisi' });
+    }
+    await sb('POST', 'polar_script_requests', {
+      user_id: req.user.uid,
+      script_name: scriptName.trim(),
+      reference_link: referenceLink || '',
+      reason: reason || '',
+      status: 'new',
+      created_at: Date.now()
+    });
+    res.json({ success: true });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+app.get('/api/admin/script-requests', authMiddleware, adminMiddleware, async (req, res) => {
+  try {
+    const rows = await sb('GET', 'polar_script_requests?select=*,polar_users(name,email,avatar)&order=created_at.desc');
+    res.json({ success: true, requests: rows });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+app.patch('/api/admin/script-requests/:id', authMiddleware, adminMiddleware, async (req, res) => {
+  try {
+    const { status } = req.body;
+    await sb('PATCH', `polar_script_requests?id=eq.${req.params.id}`, { status });
+    res.json({ success: true });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+app.delete('/api/admin/script-requests/:id', authMiddleware, adminMiddleware, async (req, res) => {
+  try {
+    await sb('DELETE', `polar_script_requests?id=eq.${req.params.id}`);
+    res.json({ success: true });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+// ============================================================
+// SPONSOR (dari user)
+// ============================================================
+app.post('/api/sponsor', authMiddleware, async (req, res) => {
+  try {
+    const { name, contact, company, message } = req.body;
+    if (!name || !name.trim() || !contact || !contact.trim()) {
+      return res.status(400).json({ success: false, message: 'Nama & kontak wajib diisi' });
+    }
+    await sb('POST', 'polar_sponsor_requests', {
+      user_id: req.user.uid,
+      name: name.trim(),
+      contact: contact.trim(),
+      company: company || '',
+      message: message || '',
+      status: 'new',
+      created_at: Date.now()
+    });
+    res.json({ success: true });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+app.get('/api/admin/sponsor', authMiddleware, adminMiddleware, async (req, res) => {
+  try {
+    const rows = await sb('GET', 'polar_sponsor_requests?select=*,polar_users(name,email,avatar)&order=created_at.desc');
+    res.json({ success: true, sponsors: rows });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+app.patch('/api/admin/sponsor/:id', authMiddleware, adminMiddleware, async (req, res) => {
+  try {
+    const { status } = req.body;
+    await sb('PATCH', `polar_sponsor_requests?id=eq.${req.params.id}`, { status });
+    res.json({ success: true });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+app.delete('/api/admin/sponsor/:id', authMiddleware, adminMiddleware, async (req, res) => {
+  try {
+    await sb('DELETE', `polar_sponsor_requests?id=eq.${req.params.id}`);
+    res.json({ success: true });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+// ============================================================
+// SESSIONS (claim / list / delete bot)
+// ============================================================
+app.get('/api/sessions', authMiddleware, async (req, res) => {
+  const rows = await sb('GET', `polar_sessions?user_id=eq.${req.user.uid}&order=created_at.desc`);
+  res.json({ success: true, sessions: rows });
+});
+
+app.post('/api/sessions', authMiddleware, async (req, res) => {
+  try {
+    const { phone, script, days, coin } = req.body;
+    if (!phone) return res.status(400).json({ success: false, message: 'Nomor WhatsApp wajib diisi' });
+
+    // 1. Cek script yang dipilih lagi online apa enggak
+    const scriptStatus = await getScriptStatus(script);
+    if (!scriptStatus.online) {
+      return res.status(400).json({ success: false, message: 'Script yang kamu pilih lagi offline. Coba lagi nanti atau pilih script lain.' });
+    }
+
+    // 2. Cek nomor ini udah kepake di session lain apa belum (siapa pun, bukan cuma user ini)
+    const existingPhone = await sb('GET', `polar_sessions?phone=eq.${encodeURIComponent(phone)}&select=id`);
+    if (existingPhone.length > 0) {
+      return res.status(400).json({ success: false, message: 'Nomor ini udah kedaftar di session lain. Hapus dulu session lamanya di menu Sessions sebelum claim ulang.' });
+    }
+
+    const user = await getUserById(req.user.uid);
+    if ((user.coins || 0) < coin) {
+      return res.status(400).json({ success: false, message: 'Polar Coin tidak cukup' });
+    }
+
+    const existingRows = await sb('GET', `polar_sessions?user_id=eq.${req.user.uid}&select=id`);
+    if (existingRows.length >= MAX_SESSIONS) {
+      return res.status(400).json({ success: false, message: `Slot session penuh (maksimal ${MAX_SESSIONS})` });
+    }
+
+    await sb('PATCH', `polar_users?id=eq.${user.id}`, { coins: user.coins - coin });
+    await logCoinTransaction(user.id, -coin, `claim_session:${script}`, user.coins - coin);
+
+    const [session] = await sb('POST', 'polar_sessions', {
+      user_id: req.user.uid,
+      phone,
+      script,
+      status: 'pending',
+      bot_mode: 'public',
+      pairing_code: null,
+      created_at: Date.now(),
+      expiry_days: days
+    });
+
+    res.json({ success: true, session, coins: user.coins - coin });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+app.delete('/api/sessions/:id', authMiddleware, async (req, res) => {
+  try {
+    await sb('DELETE', `polar_sessions?id=eq.${req.params.id}&user_id=eq.${req.user.uid}`);
+    res.json({ success: true });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+// ============================================================
+// SERVER STATUS (Pterodactyl - Phoenix & Ourin)
+// ============================================================
+async function checkServer(panelUrl, uuid, apiKey) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 detik — jangan sampe nyangkut lama kalau panel lemot/gak respon
+
+  try {
+    const r = await fetch(`${panelUrl}/api/client/servers/${uuid}/resources`, {
+      headers: { Authorization: `Bearer ${apiKey}`, Accept: 'application/json' },
+      signal: controller.signal
+    });
+    clearTimeout(timeoutId);
+    if (!r.ok) throw new Error('offline');
+    const data = await r.json();
+    const ramMB = Math.round(((data?.attributes?.resources?.memory_bytes || 0) / 1024 / 1024) * 100) / 100;
+    return { online: ramMB > 0, ram: `${ramMB} MB`, ping: `${Math.floor(Math.random() * 130) + 20}ms` };
+  } catch {
+    clearTimeout(timeoutId);
+    return { online: false, ram: '0 MB', ping: 'Timeout' };
   }
 }
 
-function renderStatusCards(scripts) {
-  const container = document.getElementById('statusCardsContainer');
-  if (!container) return;
+// ============================================================
+// SCRIPTS (bot types — Phoenix, Ourin, dll. Dikelola admin lewat tabel polar_scripts)
+// ============================================================
 
-  if (!scripts || scripts.length === 0) {
-    container.innerHTML = `<p style="text-align:center;color:var(--text-muted);font-size:13px;font-weight:600;padding:20px;">Belum ada script yang dikonfigurasi</p>`;
-    return;
+// Data buat pilihan script di form claim (safe fields aja, gak ada panel_url/api_key/uuid)
+app.get('/api/scripts', authMiddleware, async (req, res) => {
+  try {
+    const rows = await sb('GET', 'polar_scripts?active=eq.true&order=sort_order.asc&select=id,script_key,display_name,subtitle,icon');
+    res.json({ success: true, scripts: rows });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
   }
+});
 
-  container.innerHTML = scripts.map(s => `
-    <div class="card" style="box-shadow:var(--shadow-heavy);">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-        <div style="display:flex;align-items:center;gap:10px;">
-          <div style="background:var(--orange);padding:8px;border:var(--border-thick);box-shadow:var(--shadow-light);">${renderScriptIcon(s.icon, 'color:#fff;font-size:14px;margin-bottom:0;')}</div>
-          <div><h3 style="font-size:14px;font-weight:900;">${s.display_name.toUpperCase()}</h3><div style="font-size:10px;font-weight:600;color:var(--text-muted);">Pterodactyl</div></div>
-        </div>
-        <div class="badge-status ${s.online ? 'bg-online' : 'bg-offline'}">${s.online ? 'ONLINE' : 'OFFLINE'}</div>
-      </div>
-      <div class="spec-row"><span style="font-weight:600;color:var(--text-muted);">RAM</span><span style="font-weight:900;">${s.ram}</span></div>
-      <div class="spec-row"><span style="font-weight:600;color:var(--text-muted);">PING</span><span style="font-weight:900;">${s.ping}</span></div>
-    </div>
-  `).join('');
+// Status real-time semua script aktif (dipanggil dashboard buat halaman Status)
+app.get('/api/server-status', async (req, res) => {
+  try {
+    const rows = await sb('GET', 'polar_scripts?active=eq.true&order=sort_order.asc');
+    const scripts = await Promise.all(rows.map(async (s) => {
+      const status = await checkServer(s.panel_url, s.server_uuid, s.api_key);
+      return {
+        script_key: s.script_key,
+        display_name: s.display_name,
+        icon: s.icon,
+        ...status
+      };
+    }));
+    res.json({ success: true, scripts });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+// Dipakai buat validasi pas claim session — mapping nama script ke status server-nya
+// Dipakai buat validasi pas claim session — ambil config panel dari database (tabel polar_scripts)
+async function getScriptStatus(script) {
+  try {
+    const rows = await sb('GET', `polar_scripts?script_key=eq.${encodeURIComponent(script)}&select=*`);
+    const scriptRow = rows[0];
+    if (!scriptRow || !scriptRow.active) return { online: false };
+    return checkServer(scriptRow.panel_url, scriptRow.server_uuid, scriptRow.api_key);
+  } catch (e) {
+    console.error('getScriptStatus error:', e.message);
+    return { online: false };
+  }
 }
 
-function updateScriptAvailability(scripts) {
-  scripts.forEach(s => {
-    const box = document.getElementById('scriptOption-' + s.script_key);
-    if (!box) return;
+// ============================================================
+// 404 — taruh paling bawah, nangkep semua route yang gak ke-match di atas
+// ============================================================
+app.use((req, res) => {
+  res.status(404).sendFile(path.join(__dirname, 'public', '404.html'));
+});
 
-    let badge = box.querySelector('.script-offline-badge');
+const PORT = process.env.PORT || 3000;
 
-    if (!s.online) {
-      box.dataset.offline = 'true';
-      box.style.opacity = '.45';
-      box.style.cursor = 'not-allowed';
-      if (box.classList.contains('active')) {
-        box.classList.remove('active');
-        const firstOnline = scripts.find(x => x.online);
-        if (firstOnline) {
-          document.getElementById('scriptOption-' + firstOnline.script_key)?.classList.add('active');
-        }
-      }
-      if (!badge) {
-        badge = document.createElement('p');
-        badge.className = 'script-offline-badge';
-        badge.style.cssText = 'color:var(--red);font-size:9px;font-weight:700;margin-top:2px;';
-        badge.textContent = 'Sedang offline';
-        box.appendChild(badge);
-      }
-    } else {
-      box.dataset.offline = 'false';
-      box.style.opacity = '';
-      box.style.cursor = '';
-      badge?.remove();
-    }
-  });
+// Vercel (serverless) cuma butuh export "app"-nya, bukan app.listen().
+// Kalau dijalanin lokal (node server.js) atau di Pterodactyl/VPS, tetep listen normal.
+if (require.main === module) {
+  app.listen(PORT, () => console.log(`Polar.web.id server jalan di port ${PORT}`));
 }
+
+module.exports = app;
