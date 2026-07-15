@@ -49,6 +49,7 @@ const POLAR_I18N = {
     nav_profile: 'PROFILE',
     nav_history: 'RIWAYAT KOIN',
     nav_redeem: 'REDEEM KODE',
+    nav_referral: 'AJAK TEMAN',
     nav_earn: 'EARN POLAR COIN',
     nav_feedback: 'FEEDBACK',
     nav_request_script: 'REQUEST SCRIPT',
@@ -120,6 +121,16 @@ const POLAR_I18N = {
     redeem_desc: 'Masukkan kode promo/giveaway buat dapetin Polar Coin gratis',
     redeem_label: 'Kode Redeem',
     redeem_btn: 'REDEEM SEKARANG',
+
+    // ===== Referral =====
+    referral_badge: 'AJAK, DAPET KOIN',
+    referral_title_1: 'AJAK',
+    referral_title_2: 'TEMAN',
+    referral_desc: 'Undang teman pakai link kamu, dua-duanya dapet Polar Coin gratis!',
+    referral_count_label: 'Teman Diundang',
+    referral_bonus_label: 'Total Bonus Koin',
+    referral_link_label: 'Link Referral Kamu',
+    referral_explain: '🎁 Kamu dapet +5 koin tiap orang yang daftar pakai link ini. Temanmu juga langsung dapet +2 koin bonus pas daftar!',
 
     // ===== Feedback =====
     feedback_badge: 'SUARA KAMU PENTING',
@@ -206,6 +217,7 @@ const POLAR_I18N = {
     nav_profile: 'PROFILE',
     nav_history: 'COIN HISTORY',
     nav_redeem: 'REDEEM CODE',
+    nav_referral: 'INVITE FRIENDS',
     nav_earn: 'EARN POLAR COIN',
     nav_feedback: 'FEEDBACK',
     nav_request_script: 'REQUEST SCRIPT',
@@ -277,6 +289,16 @@ const POLAR_I18N = {
     redeem_desc: 'Enter a promo/giveaway code to get free Polar Coin',
     redeem_label: 'Redeem Code',
     redeem_btn: 'REDEEM NOW',
+
+    // ===== Referral =====
+    referral_badge: 'INVITE, GET COINS',
+    referral_title_1: 'INVITE',
+    referral_title_2: 'FRIENDS',
+    referral_desc: 'Invite friends with your link, both of you get free Polar Coin!',
+    referral_count_label: 'Friends Invited',
+    referral_bonus_label: 'Total Bonus Coins',
+    referral_link_label: 'Your Referral Link',
+    referral_explain: '🎁 You get +5 coins for every person who signs up with this link. Your friend also gets +2 bonus coins right away when they sign up!',
 
     // ===== Feedback =====
     feedback_badge: 'YOUR VOICE MATTERS',
