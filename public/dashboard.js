@@ -79,6 +79,170 @@ function renderHomeEventTeaser(events) {
 }
 
 // ============================================================
+// TUTORIAL SPOTLIGHT
+// ============================================================
+const TUTORIAL_STEPS = [
+  { selector: '[data-tut="brand"]', title: 'Selamat Datang di Polar.web.id! 👋', desc: 'Ini logo Polar.web.id. Yuk kenalan dulu sama bagian-bagian penting di dashboard.', arrow: 'down' },
+  { selector: '[data-tut="coin"]', title: 'Polar Coin 🪙', desc: 'Ini saldo Polar Coin kamu. Coin dipakai untuk claim server bot WhatsApp.', arrow: 'down' },
+  { selector: '[data-tut="profile"]', title: 'Profil Kamu', desc: 'Tap di sini buat lihat profil, statistik, dan info akun kamu.', arrow: 'down' },
+  { selector: '[data-tut="menu"]', title: 'Menu Navigasi ☰', desc: 'Tombol ini buka menu utama buat pindah-pindah halaman dashboard.', arrow: 'down' }
+];
+let tutStep = 0;
+let tutSidebarOpened = false;
+
+function getTutorialSidebarSteps() {
+  return [
+    { selector: '[data-tut="nav-home"]', title: 'Home', desc: 'Halaman utama buat claim server dengan cepat.', arrow: 'left' },
+    { selector: '[data-tut="nav-event"]', title: 'Event', desc: 'Lihat event dan promo terbaru dari kami.', arrow: 'left' },
+    { selector: '[data-tut="nav-status"]', title: 'Status Server', desc: 'Pantau status semua script bot secara real-time.', arrow: 'left' },
+    { selector: '[data-tut="nav-claim"]', title: 'Claim Server', desc: 'Pilih paket, masukkan nomor WhatsApp, dan claim bot gratis di sini.', arrow: 'left' },
+    { selector: '[data-tut="nav-sessions"]', title: 'My Bots', desc: 'Lihat semua bot WhatsApp yang sudah kamu claim dan kelola statusnya.', arrow: 'left' },
+    { selector: '[data-tut="nav-earn"]', title: 'Earn Polar Coin', desc: 'Dapatkan Polar Coin gratis di sini buat claim lebih banyak server.', arrow: 'left' }
+  ];
+}
+
+function allTutorialSteps() {
+  return TUTORIAL_STEPS.concat(getTutorialSidebarSteps());
+}
+
+function positionTutorialStep(step) {
+  const el = document.querySelector(step.selector);
+  if (!el) { nextTutorialStep(); return; }
+
+  const rect = el.getBoundingClientRect();
+  const pad = 8;
+  const ring = document.getElementById('tutorialRing');
+  const arrow = document.getElementById('tutorialArrow');
+  const card = document.getElementById('tutorialCard');
+
+  ring.style.top = (rect.top - pad) + 'px';
+  ring.style.left = (rect.left - pad) + 'px';
+  ring.style.width = (rect.width + pad * 2) + 'px';
+  ring.style.height = (rect.height + pad * 2) + 'px';
+
+  const dim = document.getElementById('tutorialDim');
+  const top = rect.top - pad, left = rect.left - pad, right = rect.right + pad, bottom = rect.bottom + pad;
+  dim.style.clipPath = `polygon(
+      0 0, 100% 0, 100% 100%, 0 100%, 0 0,
+      ${left}px ${top}px, ${right}px ${top}px, ${right}px ${bottom}px, ${left}px ${bottom}px, ${left}px ${top}px
+  )`;
+
+  arrow.className = 'tutorial-arrow fas fa-arrow-' + (step.arrow === 'left' ? 'right' : 'up');
+  let cardTop, cardLeft, arrowTop, arrowLeft;
+
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+  const isMobile = vw < 540;
+  const cardW = Math.min(260, vw - 24);
+
+  if (step.arrow === 'left') {
+    arrowTop = rect.top + rect.height / 2 - 13;
+    arrowLeft = rect.left - 38;
+
+    if (!isMobile) {
+      cardTop = rect.top + rect.height / 2 - 60;
+      cardLeft = rect.left - cardW - 20;
+      if (cardLeft < 10) {
+        cardLeft = rect.right + 20;
+        arrow.className = 'tutorial-arrow fas fa-arrow-left';
+        arrowLeft = rect.right + 8;
+      }
+    } else {
+      cardLeft = (vw - cardW) / 2;
+      cardTop = vh - 200;
+      if (rect.top > vh * 0.6) cardTop = rect.top - 180;
+      arrowTop = rect.bottom + 6;
+      arrowLeft = rect.left + rect.width / 2 - 13;
+      arrow.className = 'tutorial-arrow fas fa-arrow-up';
+    }
+  } else {
+    arrowTop = rect.bottom + 8;
+    arrowLeft = rect.left + rect.width / 2 - 13;
+    cardTop = rect.bottom + 40;
+    cardLeft = Math.max(10, Math.min(vw - cardW - 10, rect.left + rect.width / 2 - cardW / 2));
+    if (cardTop + 160 > vh) {
+      cardTop = rect.top - 160;
+      arrowTop = rect.top - 34;
+      arrow.className = 'tutorial-arrow fas fa-arrow-down';
+    }
+  }
+
+  cardTop = Math.max(10, Math.min(cardTop, vh - 180));
+  cardLeft = Math.max(10, Math.min(cardLeft, vw - cardW - 10));
+
+  card.style.width = cardW + 'px';
+  arrow.style.top = arrowTop + 'px';
+  arrow.style.left = arrowLeft + 'px';
+  card.style.top = cardTop + 'px';
+  card.style.left = cardLeft + 'px';
+
+  document.getElementById('tutorialTitle').textContent = step.title;
+  document.getElementById('tutorialDesc').textContent = step.desc;
+}
+
+function renderTutorialDots(total) {
+  const dotsEl = document.getElementById('tutorialDots');
+  dotsEl.innerHTML = '';
+  for (let i = 0; i < total; i++) {
+    const dot = document.createElement('span');
+    dot.className = 'tutorial-dot' + (i === tutStep ? ' active' : '');
+    dotsEl.appendChild(dot);
+  }
+}
+
+function showTutorialStep() {
+  const steps = allTutorialSteps();
+  if (tutStep >= steps.length) { finishTutorial(); return; }
+
+  if (tutStep >= TUTORIAL_STEPS.length && !tutSidebarOpened) {
+    document.getElementById('sidebar').classList.add('active');
+    document.getElementById('sidebarOverlay').classList.add('active');
+    tutSidebarOpened = true;
+  }
+
+  const total = steps.length;
+  document.getElementById('tutorialStepBadge').textContent = `STEP ${tutStep + 1}/${total}`;
+  document.getElementById('tutorialNextBtn').innerHTML = (tutStep === total - 1)
+    ? 'Selesai <i class="fas fa-check"></i>'
+    : 'Lanjut <i class="fas fa-arrow-right"></i>';
+  renderTutorialDots(total);
+
+  requestAnimationFrame(() => {
+    setTimeout(() => positionTutorialStep(steps[tutStep]), tutSidebarOpened && tutStep === TUTORIAL_STEPS.length ? 320 : 0);
+  });
+}
+
+function nextTutorialStep() {
+  tutStep++;
+  showTutorialStep();
+}
+
+function startTutorial() {
+  tutStep = 0;
+  tutSidebarOpened = false;
+  document.getElementById('tutorialOverlay').classList.add('active');
+  showTutorialStep();
+}
+
+function skipTutorial() { finishTutorial(); }
+
+function finishTutorial() {
+  document.getElementById('tutorialOverlay').classList.remove('active');
+  if (tutSidebarOpened) {
+    document.getElementById('sidebar').classList.remove('active');
+    document.getElementById('sidebarOverlay').classList.remove('active');
+  }
+}
+
+window.addEventListener('resize', () => {
+  const overlay = document.getElementById('tutorialOverlay');
+  if (overlay && overlay.classList.contains('active')) {
+    const steps = allTutorialSteps();
+    positionTutorialStep(steps[tutStep]);
+  }
+});
+
+// ============================================================
 // CHANNEL POPUP (ajakan join saluran WA)
 // ============================================================
 const CHANNEL_POPUP_COOLDOWN_DAYS = 7;
