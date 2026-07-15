@@ -80,7 +80,7 @@
 
     <div class="auth-divider" data-i18n="login_or">ATAU</div>
 
-    <a href="/api/auth/google" class="google-btn-login">
+    <a href="/api/auth/google" class="google-btn-login" id="googleLoginBtn">
       <div style="display:flex;align-items:center;gap:12px;">
         <div class="g-icon"><img src="https://upload.wikimedia.org/wikipedia/commons/5/53/Google_%22G%22_Logo.svg" alt="Google"></div>
         <div>
@@ -127,7 +127,7 @@
 
     <div class="auth-divider" data-i18n="login_or">ATAU</div>
 
-    <a href="/api/auth/google" class="google-btn-login">
+    <a href="/api/auth/google" class="google-btn-login" id="googleRegisterBtn">
       <div style="display:flex;align-items:center;gap:12px;">
         <div class="g-icon"><img src="https://upload.wikimedia.org/wikipedia/commons/5/53/Google_%22G%22_Logo.svg" alt="Google"></div>
         <div>
@@ -209,6 +209,22 @@ function hideError(id) {
   }
 })();
 
+// ===== REFERRAL: tangkep ?ref=KODE dari URL, simpen buat dipakai pas register =====
+(function captureReferralCode() {
+  const params = new URLSearchParams(window.location.search);
+  const ref = params.get('ref');
+  if (ref) {
+    localStorage.setItem('polar_ref_code', ref);
+    showToast('🎁 Kamu diundang! Daftar sekarang buat dapet bonus koin.', 'gold');
+    showRegister();
+  }
+  const savedRef = localStorage.getItem('polar_ref_code');
+  if (savedRef) {
+    document.getElementById('googleLoginBtn').href = '/api/auth/google?ref=' + encodeURIComponent(savedRef);
+    document.getElementById('googleRegisterBtn').href = '/api/auth/google?ref=' + encodeURIComponent(savedRef);
+  }
+})();
+
 // ===== LOGIN =====
 document.getElementById('loginForm').addEventListener('submit', async (e) => {
   e.preventDefault();
@@ -275,7 +291,7 @@ document.getElementById('registerForm').addEventListener('submit', async (e) => 
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
-      body: JSON.stringify({ name, email, password, captchaToken, privacyAccepted: true })
+      body: JSON.stringify({ name, email, password, captchaToken, privacyAccepted: true, referralCode: localStorage.getItem('polar_ref_code') || null })
     });
     const data = await res.json();
     if (!data.success) {
@@ -284,6 +300,7 @@ document.getElementById('registerForm').addEventListener('submit', async (e) => 
       return;
     }
     showToast('✅ Akun berhasil dibuat!', 'success');
+    localStorage.removeItem('polar_ref_code');
     setTimeout(() => window.location.href = '/dashboard', 600);
   } catch (err) {
     showError('registerError', 'Koneksi gagal, coba lagi.');
