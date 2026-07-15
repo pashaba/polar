@@ -113,6 +113,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   checkEarnCoinReturn();
   maybeShowChannelPopup();
   setInterval(loadMe, 30000);
+  setInterval(loadServerStatus, 30000);
 });
 
 // ============================================================
@@ -216,14 +217,18 @@ function renderScriptIcon(icon, style) {
   return `<i class="fas ${icon || 'fa-robot'}" style="${styleAttr}"></i>`;
 }
 
-async function loadScripts() {
+async function loadScripts(retryCount = 0) {
   try {
     const res = await fetch('/api/scripts', { credentials: 'include' });
     const data = await res.json();
-    if (!data.success) return;
+    if (!data.success) throw new Error('load scripts failed');
     renderScriptSelect(data.scripts);
   } catch (e) {
     console.error(e);
+    // Retry dikit kalau gagal (misal cold start server / koneksi lemot), biar gak nyangkut kosong selamanya
+    if (retryCount < 3) {
+      setTimeout(() => loadScripts(retryCount + 1), 2000);
+    }
   }
 }
 
@@ -688,11 +693,11 @@ function renderHistory(logs) {
 // ============================================================
 // SERVER STATUS
 // ============================================================
-async function loadServerStatus() {
+async function loadServerStatus(retryCount = 0) {
   try {
     const res = await fetch('/api/server-status');
     const data = await res.json();
-    if (!data.success) return;
+    if (!data.success) throw new Error('load status failed');
 
     renderStatusCards(data.scripts);
     updateScriptAvailability(data.scripts);
@@ -702,6 +707,9 @@ async function loadServerStatus() {
     document.getElementById('statOffline').textContent = data.scripts.length - onlineCount;
   } catch (e) {
     console.error(e);
+    if (retryCount < 3) {
+      setTimeout(() => loadServerStatus(retryCount + 1), 2000);
+    }
   }
 }
 
