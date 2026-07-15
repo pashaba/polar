@@ -237,6 +237,34 @@ body {
 .sidebar-close:hover { transform:rotate(90deg); background:var(--orange); }
 .sidebar-section-label { font-size:9px; font-weight:900; color:var(--text-muted); text-transform:uppercase; letter-spacing:1px; margin:12px 2px 2px; opacity:.7; }
 .sidebar-section-label:first-of-type { margin-top:4px; }
+
+/* ===== TUTORIAL SPOTLIGHT ===== */
+.tutorial-overlay { position:fixed; inset:0; z-index:1300; display:none; }
+.tutorial-overlay.active { display:block; }
+.tutorial-dim { position:fixed; inset:0; background:rgba(0,0,0,.75); transition:clip-path .3s cubic-bezier(0.25,0.46,0.45,0.94); }
+.tutorial-spotlight-ring {
+    position:absolute; border:4px solid var(--orange); border-radius:0px;
+    box-shadow:0 0 0 8px rgba(255,94,0,.2), 0 0 30px rgba(255,94,0,.3);
+    transition:top .3s cubic-bezier(0.25,0.46,0.45,0.94), left .3s cubic-bezier(0.25,0.46,0.45,0.94),
+               width .3s cubic-bezier(0.25,0.46,0.45,0.94), height .3s cubic-bezier(0.25,0.46,0.45,0.94);
+    pointer-events:none; animation:tutorialPulse 1.6s ease-in-out infinite;
+}
+@keyframes tutorialPulse { 0%,100%{box-shadow:0 0 0 8px rgba(255,94,0,.2), 0 0 30px rgba(255,94,0,.3);} 50%{box-shadow:0 0 0 4px rgba(255,94,0,.15), 0 0 18px rgba(255,94,0,.2);} }
+.tutorial-arrow { position:absolute; font-size:26px; color:var(--orange); filter:drop-shadow(2px 2px 0px #111); animation:float 1.4s ease-in-out infinite; pointer-events:none; z-index:1302; }
+.tutorial-card {
+    position:absolute; z-index:1302; background:var(--bg-card); border:var(--border-thick); box-shadow:var(--shadow-heavy);
+    padding:16px 18px; max-width:260px; animation:fadeInUp .3s ease;
+}
+.tutorial-step-badge { display:inline-block; background:var(--gold); color:#111; font-size:10px; font-weight:900; padding:2px 12px; margin-bottom:8px; letter-spacing:.5px; border:var(--border-thick); box-shadow:var(--shadow-light); }
+.tutorial-card h4 { font-size:15px; font-weight:900; margin-bottom:4px; }
+.tutorial-card p { font-size:12px; font-weight:500; color:var(--text-muted); margin-bottom:12px; line-height:1.5; }
+.tutorial-card-footer { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+.tutorial-skip { font-size:11px; font-weight:700; color:var(--text-muted); background:none; border:var(--border-thick); padding:4px 12px; cursor:pointer; box-shadow:var(--shadow-light); transition:var(--transition); }
+.tutorial-skip:hover { transform:translate(2px,2px); box-shadow:2px 2px 0px 0px #111; }
+.tutorial-next { padding:6px 16px; font-size:11px; }
+.tutorial-dots { display:flex; gap:4px; }
+.tutorial-dot { width:8px; height:8px; background:#ccc; border:var(--border-thick); transition:var(--transition); }
+.tutorial-dot.active { background:var(--orange); width:20px; }
 .nav-link {
     padding:10px 14px; color:#111; text-decoration:none; font-weight:700; transition:var(--transition);
     display:flex; align-items:center; gap:10px; background:#fff; border:var(--border-thick);
