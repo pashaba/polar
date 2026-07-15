@@ -274,6 +274,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   await Promise.all([loadSessions(), loadServerStatus()]);
   loadCoinHistory();
   loadEvents();
+  loadReferral();
   checkEarnCoinReturn();
   maybeShowChannelPopup();
   setInterval(loadMe, 30000);
@@ -651,6 +652,29 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // ============================================================
+// REFERRAL
+// ============================================================
+async function loadReferral() {
+  try {
+    const res = await fetch('/api/referral', { credentials: 'include' });
+    const data = await res.json();
+    if (!data.success) return;
+
+    document.getElementById('referralCount').textContent = data.totalReferred;
+    document.getElementById('referralBonus').textContent = data.totalBonusEarned;
+    document.getElementById('referralLinkInput').value = `${window.location.origin}/login?ref=${data.referralCode}`;
+  } catch (e) {
+    console.error(e);
+  }
+}
+
+function copyReferralLink() {
+  const input = document.getElementById('referralLinkInput');
+  navigator.clipboard.writeText(input.value);
+  showToast('✅ Link referral disalin!', 'success');
+}
+
+// ============================================================
 // FEEDBACK
 // ============================================================
 let selectedRating = 0;
@@ -805,6 +829,12 @@ function formatHistoryReason(reason) {
   if (reason.startsWith('redeem_code:')) {
     const code = reason.split(':')[1];
     return `🎫 Redeem Kode (${code})`;
+  }
+  if (reason.startsWith('referral_bonus:')) {
+    return `👥 Bonus Ajak Teman`;
+  }
+  if (reason === 'referral_signup_bonus') {
+    return `🎁 Bonus Daftar via Referral`;
   }
   return REASON_LABELS[reason] || reason;
 }
