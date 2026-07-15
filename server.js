@@ -981,15 +981,21 @@ app.delete('/api/sessions/:id', authMiddleware, async (req, res) => {
 // SERVER STATUS (Pterodactyl - Phoenix & Ourin)
 // ============================================================
 async function checkServer(panelUrl, uuid, apiKey) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 detik — jangan sampe nyangkut lama kalau panel lemot/gak respon
+
   try {
     const r = await fetch(`${panelUrl}/api/client/servers/${uuid}/resources`, {
-      headers: { Authorization: `Bearer ${apiKey}`, Accept: 'application/json' }
+      headers: { Authorization: `Bearer ${apiKey}`, Accept: 'application/json' },
+      signal: controller.signal
     });
+    clearTimeout(timeoutId);
     if (!r.ok) throw new Error('offline');
     const data = await r.json();
     const ramMB = Math.round(((data?.attributes?.resources?.memory_bytes || 0) / 1024 / 1024) * 100) / 100;
     return { online: ramMB > 0, ram: `${ramMB} MB`, ping: `${Math.floor(Math.random() * 130) + 20}ms` };
   } catch {
+    clearTimeout(timeoutId);
     return { online: false, ram: '0 MB', ping: 'Timeout' };
   }
 }
