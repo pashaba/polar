@@ -79,6 +79,7 @@
     <button class="admin-tab-btn" onclick="switchTab('feedback')" id="tabBtn-feedback"><i class="fas fa-comment-dots"></i> Feedback</button>
     <button class="admin-tab-btn" onclick="switchTab('scriptrequests')" id="tabBtn-scriptrequests"><i class="fas fa-square-plus"></i> Req. Script</button>
     <button class="admin-tab-btn" onclick="switchTab('sponsor')" id="tabBtn-sponsor"><i class="fas fa-handshake"></i> Sponsor</button>
+    <button class="admin-tab-btn" onclick="switchTab('products')" id="tabBtn-products"><i class="fas fa-box"></i> Produk</button>
   </div>
 
   <!-- ===== TAB: KODE REDEEM ===== -->
@@ -287,6 +288,60 @@
     <div id="sponsorAdminList"></div>
   </div>
 
+  <!-- ===== TAB: PRODUK ===== -->
+  <div id="tab-products" class="admin-tab-section">
+    <h1 style="font-weight:900;font-size:22px;text-transform:uppercase;margin-bottom:4px;">Kelola Produk</h1>
+    <p style="color:var(--text-muted);font-size:13px;margin-bottom:20px;">Produk aktif bakal muncul di halaman toko (<a href="/store" target="_blank" style="color:var(--orange);font-weight:800;">polar.web.id/store</a>)</p>
+
+    <div class="card">
+      <div class="section-title" id="productFormTitle">➕ TAMBAH PRODUK BARU</div>
+      <input type="hidden" id="editProductId" value="">
+      <div class="form-row full">
+        <div>
+          <label>Judul Produk</label>
+          <input type="text" id="productTitle" placeholder="Contoh: Server VPS 2GB RAM">
+        </div>
+      </div>
+      <div class="form-row full">
+        <div>
+          <label>Deskripsi</label>
+          <textarea id="productDescription" placeholder="Deskripsi singkat produknya..."></textarea>
+        </div>
+      </div>
+      <div class="form-row">
+        <div>
+          <label>Harga (Rupiah)</label>
+          <input type="number" id="productPrice" placeholder="50000" min="0">
+        </div>
+        <div>
+          <label>Kategori</label>
+          <input type="text" id="productCategory" placeholder="Contoh: Server, Jasa, dll" list="categorySuggestions">
+          <datalist id="categorySuggestions"></datalist>
+        </div>
+      </div>
+      <div class="form-row full">
+        <div>
+          <label>URL Gambar Produk</label>
+          <input type="text" id="productImage" placeholder="https://..." oninput="previewProductImage()">
+          <img id="productImagePreview" class="thumb-preview">
+        </div>
+      </div>
+      <div class="form-row full">
+        <div>
+          <label>Urutan Tampil</label>
+          <input type="number" id="productSortOrder" placeholder="0" value="0">
+        </div>
+      </div>
+      <button class="btn btn-orange btn-full" id="saveProductBtn" onclick="saveProduct()"><i class="fas fa-plus"></i> Tambah Produk</button>
+      <button class="btn btn-close-modal btn-full" id="cancelEditProductBtn" style="margin-top:6px;display:none;" onclick="cancelEditProduct()">Batal Edit</button>
+    </div>
+
+    <div class="card">
+      <div class="section-title">📋 DAFTAR PRODUK</div>
+      <div id="productsAdminList"></div>
+    </div>
+  </div>
+
 </div>
 
 <div class="toast" id="toast"></div>
@@ -323,6 +378,7 @@ function switchTab(tab) {
   if (tab === 'feedback') loadFeedbackAdmin();
   if (tab === 'scriptrequests') loadScriptRequestsAdmin();
   if (tab === 'sponsor') loadSponsorAdmin();
+  if (tab === 'products') loadProductsAdmin();
 }
 
 // ============================================================
@@ -943,6 +999,143 @@ function renderSponsorAdmin(items) {
         <button class="btn btn-sm btn-danger" onclick="deleteItem('sponsor', ${s.id})"><i class="fas fa-trash"></i></button>
       </div>
     </div>`).join('');
+}
+
+// ============================================================
+// PRODUK
+// ============================================================
+function previewProductImage() {
+  const url = document.getElementById('productImage').value.trim();
+  const img = document.getElementById('productImagePreview');
+  if (url) { img.src = url; img.style.display = 'block'; } else { img.style.display = 'none'; }
+}
+
+async function loadProductsAdmin() {
+  try {
+    const res = await fetch('/api/admin/products', { credentials: 'include' });
+    const data = await res.json();
+    if (data.success) {
+      renderProductsAdmin(data.products);
+      updateCategoryDatalist(data.products);
+    }
+  } catch (e) { console.error(e); }
+}
+
+function updateCategoryDatalist(products) {
+  const categories = [...new Set(products.map(p => p.category))];
+  document.getElementById('categorySuggestions').innerHTML = categories.map(c => `<option value="${c}">`).join('');
+}
+
+function formatRupiahAdmin(n) {
+  return 'Rp' + Number(n).toLocaleString('id-ID');
+}
+
+function renderProductsAdmin(products) {
+  const list = document.getElementById('productsAdminList');
+  if (!products || products.length === 0) {
+    list.innerHTML = '<p style="text-align:center;padding:16px;color:var(--text-muted);font-size:13px;">Belum ada produk</p>';
+    return;
+  }
+  list.innerHTML = products.map(p => {
+    const statusColor = p.active ? 'var(--green)' : 'var(--red)';
+    const imgHtml = p.image_url
+      ? `<img src="${p.image_url}" style="width:44px;height:44px;object-fit:cover;border:var(--border-thick);">`
+      : `<div style="width:44px;height:44px;background:#f0f0f0;border:var(--border-thick);display:flex;align-items:center;justify-content:center;color:#ccc;"><i class="fas fa-image"></i></div>`;
+    return `
+      <div class="card" style="margin-bottom:10px;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
+          <div style="display:flex;align-items:center;gap:10px;">
+            ${imgHtml}
+            <div>
+              <div style="font-weight:900;font-size:14px;">${p.title}</div>
+              <div style="font-size:11px;color:var(--text-muted);">${p.category} • ${formatRupiahAdmin(p.price)}</div>
+            </div>
+          </div>
+          <span class="mini-badge" style="color:${statusColor};border-color:${statusColor};">${p.active ? 'Aktif' : 'Nonaktif'}</span>
+        </div>
+        <div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:10px;">
+          <button class="btn btn-sm btn-white" onclick='editProduct(${JSON.stringify(p).replace(/'/g, "&#39;")})'><i class="fas fa-pen"></i> Edit</button>
+          <button class="btn btn-sm ${p.active ? 'btn-danger' : 'btn-success'}" onclick="toggleProduct(${p.id}, ${!p.active})">${p.active ? 'Nonaktifin' : 'Aktifin'}</button>
+          <button class="btn btn-sm btn-danger" onclick="deleteProduct(${p.id}, '${p.title.replace(/'/g, "\\'")}')"><i class="fas fa-trash"></i></button>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function editProduct(p) {
+  document.getElementById('editProductId').value = p.id;
+  document.getElementById('productTitle').value = p.title;
+  document.getElementById('productDescription').value = p.description || '';
+  document.getElementById('productPrice').value = p.price;
+  document.getElementById('productCategory').value = p.category;
+  document.getElementById('productImage').value = p.image_url || '';
+  document.getElementById('productSortOrder').value = p.sort_order || 0;
+  previewProductImage();
+  document.getElementById('productFormTitle').textContent = '✏️ EDIT PRODUK';
+  document.getElementById('saveProductBtn').innerHTML = '<i class="fas fa-save"></i> Update Produk';
+  document.getElementById('cancelEditProductBtn').style.display = 'block';
+  document.getElementById('tab-products').scrollIntoView({ behavior: 'smooth' });
+}
+
+function cancelEditProduct() {
+  document.getElementById('editProductId').value = '';
+  document.getElementById('productTitle').value = '';
+  document.getElementById('productDescription').value = '';
+  document.getElementById('productPrice').value = '';
+  document.getElementById('productCategory').value = '';
+  document.getElementById('productImage').value = '';
+  document.getElementById('productSortOrder').value = '0';
+  document.getElementById('productImagePreview').style.display = 'none';
+  document.getElementById('productFormTitle').textContent = '➕ TAMBAH PRODUK BARU';
+  document.getElementById('saveProductBtn').innerHTML = '<i class="fas fa-plus"></i> Tambah Produk';
+  document.getElementById('cancelEditProductBtn').style.display = 'none';
+}
+
+async function saveProduct() {
+  const editId = document.getElementById('editProductId').value;
+  const title = document.getElementById('productTitle').value.trim();
+  const description = document.getElementById('productDescription').value.trim();
+  const price = document.getElementById('productPrice').value;
+  const category = document.getElementById('productCategory').value.trim();
+  const imageUrl = document.getElementById('productImage').value.trim();
+  const sortOrder = document.getElementById('productSortOrder').value;
+
+  if (!title) { showToast('❌ Judul produk wajib diisi', 'error'); return; }
+
+  const btn = document.getElementById('saveProductBtn');
+  btn.disabled = true;
+  try {
+    const body = JSON.stringify({ title, description, price, category, imageUrl, sortOrder });
+    const res = await fetch(editId ? '/api/admin/products/' + editId : '/api/admin/products', {
+      method: editId ? 'PATCH' : 'POST',
+      headers: { 'Content-Type': 'application/json' }, credentials: 'include', body
+    });
+    const data = await res.json();
+    if (!data.success) { showToast('❌ ' + data.message, 'error'); return; }
+    showToast(editId ? '✅ Produk diupdate!' : '✅ Produk ditambahkan!', 'success');
+    cancelEditProduct();
+    loadProductsAdmin();
+  } catch (e) { showToast('❌ Gagal simpan produk', 'error'); }
+  finally { btn.disabled = false; }
+}
+
+async function toggleProduct(id, newActive) {
+  try {
+    await fetch('/api/admin/products/' + id, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+      body: JSON.stringify({ active: newActive })
+    });
+    loadProductsAdmin();
+  } catch (e) { showToast('❌ Gagal update produk', 'error'); }
+}
+
+async function deleteProduct(id, title) {
+  if (!confirm(`Hapus produk "${title}"?`)) return;
+  try {
+    await fetch('/api/admin/products/' + id, { method: 'DELETE', credentials: 'include' });
+    showToast('✅ Produk dihapus', 'success');
+    loadProductsAdmin();
+  } catch (e) { showToast('❌ Gagal hapus produk', 'error'); }
 }
 
 // ============================================================
