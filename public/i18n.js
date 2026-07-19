@@ -46,6 +46,7 @@ const POLAR_I18N = {
     nav_status: 'STATUS',
     nav_claim: 'CLAIM',
     nav_sessions: 'SESSIONS',
+    nav_shop: 'TOKO',
     nav_profile: 'PROFILE',
     nav_history: 'RIWAYAT KOIN',
     nav_redeem: 'REDEEM KODE',
@@ -90,6 +91,7 @@ const POLAR_I18N = {
     status_offline: 'OFFLINE',
     status_ram: 'RAM',
     status_ping: 'PING',
+    status_loading: 'Memuat status server...',
 
     // ===== Sessions =====
     sessions_badge_suffix: 'SESSION',
@@ -214,6 +216,7 @@ const POLAR_I18N = {
     nav_status: 'STATUS',
     nav_claim: 'CLAIM',
     nav_sessions: 'SESSIONS',
+    nav_shop: 'SHOP',
     nav_profile: 'PROFILE',
     nav_history: 'COIN HISTORY',
     nav_redeem: 'REDEEM CODE',
@@ -258,6 +261,7 @@ const POLAR_I18N = {
     status_offline: 'OFFLINE',
     status_ram: 'RAM',
     status_ping: 'PING',
+    status_loading: 'Loading server status...',
 
     // ===== Sessions =====
     sessions_badge_suffix: 'SESSIONS',
