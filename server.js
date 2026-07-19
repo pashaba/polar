@@ -47,6 +47,10 @@ app.get('/privacy', (req, res) => res.sendFile(path.join(__dirname, 'public', 'p
 
 app.get('/privacy.html', (req, res) => res.redirect(301, '/privacy'));
 
+app.get('/store', (req, res) => res.sendFile(path.join(__dirname, 'public', 'store.html')));
+
+app.get('/store.html', (req, res) => res.redirect(301, '/store'));
+
 app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin.html')));
 
 // Redirect permanen kalau ada yang masih akses .html langsung
@@ -786,6 +790,82 @@ app.patch('/api/admin/events/:id', authMiddleware, adminMiddleware, async (req, 
 app.delete('/api/admin/events/:id', authMiddleware, adminMiddleware, async (req, res) => {
   try {
     await sb('DELETE', `polar_events?id=eq.${req.params.id}`);
+    res.json({ success: true });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+// ============================================================
+// PRODUCTS (halaman toko /store — publik, gak perlu login)
+// ============================================================
+app.get('/api/products', async (req, res) => {
+  try {
+    const rows = await sb('GET', 'polar_products?active=eq.true&order=category.asc,sort_order.asc');
+    res.json({ success: true, products: rows });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+// ============================================================
+// ADMIN — kelola produk
+// ============================================================
+app.get('/api/admin/products', authMiddleware, adminMiddleware, async (req, res) => {
+  try {
+    const rows = await sb('GET', 'polar_products?order=category.asc,sort_order.asc');
+    res.json({ success: true, products: rows });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+app.post('/api/admin/products', authMiddleware, adminMiddleware, async (req, res) => {
+  try {
+    const { title, description, price, imageUrl, category, sortOrder } = req.body;
+    if (!title || !title.trim()) {
+      return res.status(400).json({ success: false, message: 'Judul produk wajib diisi' });
+    }
+
+    const [created] = await sb('POST', 'polar_products', {
+      title: title.trim(),
+      description: description || '',
+      price: Number(price) || 0,
+      image_url: imageUrl || '',
+      category: (category && category.trim()) || 'Umum',
+      active: true,
+      sort_order: Number(sortOrder) || 0,
+      created_at: Date.now()
+    });
+
+    res.json({ success: true, product: created });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+app.patch('/api/admin/products/:id', authMiddleware, adminMiddleware, async (req, res) => {
+  try {
+    const { title, description, price, imageUrl, category, active, sortOrder } = req.body;
+    const patch = {};
+    if (title !== undefined) patch.title = title;
+    if (description !== undefined) patch.description = description;
+    if (price !== undefined) patch.price = Number(price) || 0;
+    if (imageUrl !== undefined) patch.image_url = imageUrl;
+    if (category !== undefined) patch.category = category;
+    if (active !== undefined) patch.active = !!active;
+    if (sortOrder !== undefined) patch.sort_order = Number(sortOrder) || 0;
+
+    await sb('PATCH', `polar_products?id=eq.${req.params.id}`, patch);
+    res.json({ success: true });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+app.delete('/api/admin/products/:id', authMiddleware, adminMiddleware, async (req, res) => {
+  try {
+    await sb('DELETE', `polar_products?id=eq.${req.params.id}`);
     res.json({ success: true });
   } catch (e) {
     res.status(500).json({ success: false, message: e.message });
