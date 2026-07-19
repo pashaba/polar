@@ -17,9 +17,9 @@
 <script>
   // Set tema sebelum body render, biar ga "kedip" putih dulu baru gelap
   (function() {
+    // Default selalu tema terang (putih), BUKAN ngikutin preferensi sistem. Cuma pindah ke dark kalau user eksplisit milih via toggle.
     const saved = localStorage.getItem('polar_theme');
-    const theme = saved || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
-    if (theme === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+    if (saved === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
   })();
 </script>
 </head>
@@ -105,6 +105,7 @@
   <a href="#" class="nav-link" onclick="navTo('status'); toggleMenu();" data-tut="nav-status"><i class="fas fa-server"></i> <span data-i18n="nav_status">STATUS</span></a>
   <a href="#" class="nav-link" onclick="navTo('claim'); toggleMenu();" data-tut="nav-claim"><i class="fas fa-download"></i> <span data-i18n="nav_claim">CLAIM</span></a>
   <a href="#" class="nav-link" onclick="navTo('sessions'); toggleMenu();" data-tut="nav-sessions"><i class="fas fa-robot"></i> <span data-i18n="nav_sessions">SESSIONS</span></a>
+  <a href="/store" target="_blank" class="nav-link"><i class="fas fa-store"></i> <span data-i18n="nav_shop">SHOP</span></a>
   <a href="#" class="nav-link" onclick="toggleMenu(); setTimeout(startTutorial, 350);"><i class="fas fa-circle-question"></i> <span data-i18n="nav_tutorial">MULAI TUTORIAL</span></a>
 
   <div class="sidebar-section-label" data-i18n="nav_section_account">Akun Saya</div>
@@ -176,7 +177,11 @@
     <div class="grid-2" id="packageGrid"></div>
 
     <div class="section-title" data-i18n="claim_script_title">⚙️ JENIS SCRIPT</div>
-    <div class="grid-3" id="scriptSelectGrid"></div>
+    <div class="grid-3" id="scriptSelectGrid">
+      <div style="grid-column:1/-1;text-align:center;padding:24px 16px;">
+        <i class="fas fa-spinner fa-spin" style="font-size:24px;color:var(--orange);"></i>
+      </div>
+    </div>
 
     <div class="card">
       <div style="margin-bottom:10px;">
@@ -206,7 +211,12 @@
       </div>
     </div>
 
-    <div id="statusCardsContainer"></div>
+    <div id="statusCardsContainer">
+      <div style="text-align:center;padding:40px 16px;">
+        <i class="fas fa-spinner fa-spin" style="font-size:32px;color:var(--orange);"></i>
+        <p style="color:var(--text-muted);font-size:12px;font-weight:600;margin-top:10px;" data-i18n="status_loading">Memuat status server...</p>
+      </div>
+    </div>
   </div>
 
   <!-- SESSIONS -->
