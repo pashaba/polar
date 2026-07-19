@@ -1,966 +1,383 @@
-// ============================================================
-// STATE
-// ============================================================
-let currentUser = null;
-let currentSessions = [];
-let selectedDays = 1;
-let selectedCoin = 1;
-const MAX_SESSIONS = 10;
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+<meta name="theme-color" content="#ff5e00">
+<meta name="robots" content="noindex, nofollow">
+<meta name="description" content="Claim server bot WhatsApp gratis pakai Polar Coin">
+<link rel="canonical" href="https://polar.web.id/dashboard">
+<link rel="manifest" href="/manifest.json">
+<link rel="icon" href="/icons/icon-192.png">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<title>Polar.web.id — Bot WhatsApp Gratis 🪙</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="stylesheet" href="style.css">
+<script>
+  // Set tema sebelum body render, biar ga "kedip" putih dulu baru gelap
+  (function() {
+    // Default selalu tema terang (putih), BUKAN ngikutin preferensi sistem. Cuma pindah ke dark kalau user eksplisit milih via toggle.
+    const saved = localStorage.getItem('polar_theme');
+    if (saved === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+  })();
+</script>
+</head>
+<body id="body" class="locked-bg">
 
-const PACKAGES = [
-  { days: 1, coin: 1, label: '1 Hari', icon: 'fa-calendar-day' },
-  { days: 2, coin: 2, label: '2 Hari', icon: 'fa-calendar-week' },
-  { days: 4, coin: 3, label: '4 Hari', icon: 'fa-calendar-alt' },
-  { days: 10, coin: 10, label: '10 Hari', icon: 'fa-calendar-check' }
-];
+<a href="https://wa.me/6285715294026" target="_blank" style="position:fixed;bottom:20px;left:20px;z-index:150;width:52px;height:52px;background:var(--green);color:#fff;border:var(--border-thick);box-shadow:var(--shadow-heavy);display:flex;align-items:center;justify-content:center;font-size:24px;text-decoration:none;">
+  <i class="fab fa-whatsapp"></i>
+</a>
 
-// ============================================================
-// EVENTS
-// ============================================================
-async function loadEvents() {
-  try {
-    const res = await fetch('/api/events', { credentials: 'include' });
-    const data = await res.json();
-    if (!data.success) return;
-    renderEvents(data.events);
-    renderHomeEventTeaser(data.events);
-  } catch (e) {
-    console.error(e);
-  }
-}
+<div class="toast" id="toast"></div>
 
-function formatEventDate(ts) {
-  if (!ts) return '';
-  return new Date(Number(ts)).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' });
-}
-
-function renderEvents(events) {
-  const list = document.getElementById('eventList');
-  if (!list) return;
-
-  if (!events || events.length === 0) {
-    list.innerHTML = `
-      <div class="card" style="text-align:center;padding:40px 16px;">
-        <div style="font-size:48px;margin-bottom:12px;opacity:.3;">📢</div>
-        <h3 style="font-weight:900;font-size:20px;">Belum Ada Event</h3>
-        <p style="color:var(--text-muted);font-size:13px;font-weight:500;margin-top:4px;">Pantau terus, event baru bakal muncul di sini</p>
-      </div>`;
-    return;
-  }
-
-  list.innerHTML = events.map(ev => {
-    const dateRange = ev.event_date
-      ? `${formatEventDate(ev.event_date)}${ev.end_date ? ' – ' + formatEventDate(ev.end_date) : ''}`
-      : (ev.end_date ? `Berakhir ${formatEventDate(ev.end_date)}` : '');
-
-    return `
-      <div class="event-card">
-        ${ev.thumbnail_url ? `<img src="${ev.thumbnail_url}" class="event-card-thumb" alt="${ev.title}" onerror="this.style.display='none'">` : ''}
-        <div class="event-card-body">
-          <span class="event-card-badge">🔥 EVENT</span>
-          <h3>${ev.title}</h3>
-          ${dateRange ? `<div class="event-card-date"><i class="fas fa-calendar"></i> ${dateRange}</div>` : ''}
-          ${ev.description ? `<p>${ev.description}</p>` : ''}
-          ${ev.link_url ? `<a href="${ev.link_url}" target="_blank" class="btn btn-orange btn-full">${ev.link_label || 'Lihat Event'} <i class="fas fa-arrow-up-right-from-square"></i></a>` : ''}
-        </div>
-      </div>`;
-  }).join('');
-}
-
-function renderHomeEventTeaser(events) {
-  const teaser = document.getElementById('homeEventTeaser');
-  if (!teaser) return;
-  if (!events || events.length === 0) { teaser.innerHTML = ''; return; }
-  teaser.innerHTML = `
-    <div class="event-teaser-banner" onclick="navTo('event')">
-      <i class="fas fa-bullhorn"></i>
-      <span>Ada ${events.length} event baru! Tap buat lihat detailnya →</span>
-    </div>`;
-}
-
-// ============================================================
-// TUTORIAL SPOTLIGHT
-// ============================================================
-const TUTORIAL_STEPS = [
-  { selector: '[data-tut="brand"]', title: 'Selamat Datang di Polar.web.id! 👋', desc: 'Ini logo Polar.web.id. Yuk kenalan dulu sama bagian-bagian penting di dashboard.', arrow: 'down' },
-  { selector: '[data-tut="coin"]', title: 'Polar Coin 🪙', desc: 'Ini saldo Polar Coin kamu. Coin dipakai untuk claim server bot WhatsApp.', arrow: 'down' },
-  { selector: '[data-tut="profile"]', title: 'Profil Kamu', desc: 'Tap di sini buat lihat profil, statistik, dan info akun kamu.', arrow: 'down' },
-  { selector: '[data-tut="menu"]', title: 'Menu Navigasi ☰', desc: 'Tombol ini buka menu utama buat pindah-pindah halaman dashboard.', arrow: 'down' }
-];
-let tutStep = 0;
-let tutSidebarOpened = false;
-
-function getTutorialSidebarSteps() {
-  return [
-    { selector: '[data-tut="nav-home"]', title: 'Home', desc: 'Halaman utama buat claim server dengan cepat.', arrow: 'left' },
-    { selector: '[data-tut="nav-event"]', title: 'Event', desc: 'Lihat event dan promo terbaru dari kami.', arrow: 'left' },
-    { selector: '[data-tut="nav-status"]', title: 'Status Server', desc: 'Pantau status semua script bot secara real-time.', arrow: 'left' },
-    { selector: '[data-tut="nav-claim"]', title: 'Claim Server', desc: 'Pilih paket, masukkan nomor WhatsApp, dan claim bot gratis di sini.', arrow: 'left' },
-    { selector: '[data-tut="nav-sessions"]', title: 'My Bots', desc: 'Lihat semua bot WhatsApp yang sudah kamu claim dan kelola statusnya.', arrow: 'left' },
-    { selector: '[data-tut="nav-earn"]', title: 'Earn Polar Coin', desc: 'Dapatkan Polar Coin gratis di sini buat claim lebih banyak server.', arrow: 'left' }
-  ];
-}
-
-function allTutorialSteps() {
-  return TUTORIAL_STEPS.concat(getTutorialSidebarSteps());
-}
-
-function positionTutorialStep(step) {
-  const el = document.querySelector(step.selector);
-  if (!el) { nextTutorialStep(); return; }
-
-  const rect = el.getBoundingClientRect();
-  const pad = 8;
-  const ring = document.getElementById('tutorialRing');
-  const arrow = document.getElementById('tutorialArrow');
-  const card = document.getElementById('tutorialCard');
-
-  ring.style.top = (rect.top - pad) + 'px';
-  ring.style.left = (rect.left - pad) + 'px';
-  ring.style.width = (rect.width + pad * 2) + 'px';
-  ring.style.height = (rect.height + pad * 2) + 'px';
-
-  const dim = document.getElementById('tutorialDim');
-  const top = rect.top - pad, left = rect.left - pad, right = rect.right + pad, bottom = rect.bottom + pad;
-  dim.style.clipPath = `polygon(
-      0 0, 100% 0, 100% 100%, 0 100%, 0 0,
-      ${left}px ${top}px, ${right}px ${top}px, ${right}px ${bottom}px, ${left}px ${bottom}px, ${left}px ${top}px
-  )`;
-
-  arrow.className = 'tutorial-arrow fas fa-arrow-' + (step.arrow === 'left' ? 'right' : 'up');
-  let cardTop, cardLeft, arrowTop, arrowLeft;
-
-  const vw = window.innerWidth;
-  const vh = window.innerHeight;
-  const isMobile = vw < 540;
-  const cardW = Math.min(260, vw - 24);
-
-  if (step.arrow === 'left') {
-    arrowTop = rect.top + rect.height / 2 - 13;
-    arrowLeft = rect.left - 38;
-
-    if (!isMobile) {
-      cardTop = rect.top + rect.height / 2 - 60;
-      cardLeft = rect.left - cardW - 20;
-      if (cardLeft < 10) {
-        cardLeft = rect.right + 20;
-        arrow.className = 'tutorial-arrow fas fa-arrow-left';
-        arrowLeft = rect.right + 8;
-      }
-    } else {
-      cardLeft = (vw - cardW) / 2;
-      cardTop = vh - 200;
-      if (rect.top > vh * 0.6) cardTop = rect.top - 180;
-      arrowTop = rect.bottom + 6;
-      arrowLeft = rect.left + rect.width / 2 - 13;
-      arrow.className = 'tutorial-arrow fas fa-arrow-up';
-    }
-  } else {
-    arrowTop = rect.bottom + 8;
-    arrowLeft = rect.left + rect.width / 2 - 13;
-    cardTop = rect.bottom + 40;
-    cardLeft = Math.max(10, Math.min(vw - cardW - 10, rect.left + rect.width / 2 - cardW / 2));
-    if (cardTop + 160 > vh) {
-      cardTop = rect.top - 160;
-      arrowTop = rect.top - 34;
-      arrow.className = 'tutorial-arrow fas fa-arrow-down';
-    }
-  }
-
-  cardTop = Math.max(10, Math.min(cardTop, vh - 180));
-  cardLeft = Math.max(10, Math.min(cardLeft, vw - cardW - 10));
-
-  card.style.width = cardW + 'px';
-  arrow.style.top = arrowTop + 'px';
-  arrow.style.left = arrowLeft + 'px';
-  card.style.top = cardTop + 'px';
-  card.style.left = cardLeft + 'px';
-
-  document.getElementById('tutorialTitle').textContent = step.title;
-  document.getElementById('tutorialDesc').textContent = step.desc;
-}
-
-function renderTutorialDots(total) {
-  const dotsEl = document.getElementById('tutorialDots');
-  dotsEl.innerHTML = '';
-  for (let i = 0; i < total; i++) {
-    const dot = document.createElement('span');
-    dot.className = 'tutorial-dot' + (i === tutStep ? ' active' : '');
-    dotsEl.appendChild(dot);
-  }
-}
-
-function showTutorialStep() {
-  const steps = allTutorialSteps();
-  if (tutStep >= steps.length) { finishTutorial(); return; }
-
-  if (tutStep >= TUTORIAL_STEPS.length && !tutSidebarOpened) {
-    document.getElementById('sidebar').classList.add('active');
-    document.getElementById('sidebarOverlay').classList.add('active');
-    tutSidebarOpened = true;
-  }
-
-  const total = steps.length;
-  document.getElementById('tutorialStepBadge').textContent = `STEP ${tutStep + 1}/${total}`;
-  document.getElementById('tutorialNextBtn').innerHTML = (tutStep === total - 1)
-    ? 'Selesai <i class="fas fa-check"></i>'
-    : 'Lanjut <i class="fas fa-arrow-right"></i>';
-  renderTutorialDots(total);
-
-  requestAnimationFrame(() => {
-    setTimeout(() => positionTutorialStep(steps[tutStep]), tutSidebarOpened && tutStep === TUTORIAL_STEPS.length ? 320 : 0);
-  });
-}
-
-function nextTutorialStep() {
-  tutStep++;
-  showTutorialStep();
-}
-
-function startTutorial() {
-  tutStep = 0;
-  tutSidebarOpened = false;
-  document.getElementById('tutorialOverlay').classList.add('active');
-  showTutorialStep();
-}
-
-function skipTutorial() { finishTutorial(); }
-
-function finishTutorial() {
-  document.getElementById('tutorialOverlay').classList.remove('active');
-  if (tutSidebarOpened) {
-    document.getElementById('sidebar').classList.remove('active');
-    document.getElementById('sidebarOverlay').classList.remove('active');
-  }
-}
-
-window.addEventListener('resize', () => {
-  const overlay = document.getElementById('tutorialOverlay');
-  if (overlay && overlay.classList.contains('active')) {
-    const steps = allTutorialSteps();
-    positionTutorialStep(steps[tutStep]);
-  }
-});
-
-// ============================================================
-// CHANNEL POPUP (ajakan join saluran WA)
-// ============================================================
-const CHANNEL_POPUP_COOLDOWN_DAYS = 7;
-
-function maybeShowChannelPopup() {
-  const lastDismissed = localStorage.getItem('polar_channel_popup_dismissed');
-  const now = Date.now();
-  if (lastDismissed && (now - Number(lastDismissed)) < CHANNEL_POPUP_COOLDOWN_DAYS * 24 * 60 * 60 * 1000) {
-    return;
-  }
-  setTimeout(() => {
-    document.getElementById('channelPopupOverlay')?.classList.add('active');
-  }, 1200);
-}
-
-function closeChannelPopup() {
-  document.getElementById('channelPopupOverlay')?.classList.remove('active');
-  localStorage.setItem('polar_channel_popup_dismissed', Date.now().toString());
-}
-
-// ============================================================
-// INIT
-// ============================================================
-document.addEventListener('DOMContentLoaded', async () => {
-  await loadMe();
-  renderPackages();
-  renderFeedbackStars();
-  await loadScripts();
-  await Promise.all([loadSessions(), loadServerStatus()]);
-  loadCoinHistory();
-  loadEvents();
-  loadReferral();
-  checkEarnCoinReturn();
-  maybeShowChannelPopup();
-  setInterval(loadMe, 30000);
-  setInterval(loadServerStatus, 30000);
-});
-
-// ============================================================
-// AUTH / ME
-// ============================================================
-async function loadMe() {
-  try {
-    const res = await fetch('/api/me', { credentials: 'include' });
-    if (res.status === 401) {
-      window.location.href = '/login';
-      return;
-    }
-    const data = await res.json();
-    if (!data.success) {
-      window.location.href = '/login';
-      return;
-    }
-    currentUser = data.user;
-    renderUser();
-  } catch (e) {
-    console.error(e);
-  }
-}
-
-function renderUser() {
-  document.getElementById('body').classList.remove('locked-bg');
-  document.getElementById('coinCount').textContent = currentUser.coins;
-  document.getElementById('navAvatar').src = currentUser.avatar;
-  document.getElementById('navName').textContent = currentUser.name.split(' ')[0];
-  document.getElementById('claimInitial').textContent = currentUser.name.charAt(0).toUpperCase();
-  document.getElementById('claimName').textContent = currentUser.name;
-  document.getElementById('claimCoinDisplay').textContent = currentUser.coins;
-  document.getElementById('profileAvatar').src = currentUser.avatar;
-  document.getElementById('profileName').textContent = currentUser.name;
-  document.getElementById('profileEmail').textContent = currentUser.email;
-  document.getElementById('profileCoinDisplay').textContent = currentUser.coins;
-  document.getElementById('profileCoinStat').textContent = currentUser.coins;
-}
-
-async function logout() {
-  await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
-  window.location.href = '/login';
-}
-
-// ============================================================
-// TOAST / MODALS
-// ============================================================
-function showToast(message, type = 'info') {
-  const toast = document.getElementById('toast');
-  toast.textContent = message;
-  toast.className = 'toast ' + type;
-  toast.style.display = 'block';
-  clearTimeout(toast._timeout);
-  toast._timeout = setTimeout(() => { toast.style.display = 'none'; }, 4000);
-}
-
-function toggleMenu() {
-  document.getElementById('sidebar').classList.toggle('active');
-  document.getElementById('sidebarOverlay').classList.toggle('active');
-}
-
-// ============================================================
-// DARK MODE
-// ============================================================
-function applyThemeIcon() {
-  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-  const icon = document.getElementById('themeIcon');
-  if (icon) icon.className = isDark ? 'fas fa-sun' : 'fas fa-moon';
-}
-
-function toggleTheme() {
-  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-  if (isDark) {
-    document.documentElement.removeAttribute('data-theme');
-    localStorage.setItem('polar_theme', 'light');
-  } else {
-    document.documentElement.setAttribute('data-theme', 'dark');
-    localStorage.setItem('polar_theme', 'dark');
-  }
-  applyThemeIcon();
-}
-
-applyThemeIcon();
-
-function navTo(sectionId) {
-  document.querySelectorAll('.section').forEach(sec => sec.classList.remove('active'));
-  document.getElementById('sec-' + sectionId).classList.add('active');
-  window.scrollTo({ top: 0, behavior: 'smooth' });
-}
-
-// loading modal lama udah dihapus — sekarang cukup pakai top progress bar + spinner di tombol
-
-// ============================================================
-// SCRIPTS (dinamis dari database, dikelola admin)
-// ============================================================
-function renderScriptIcon(icon, style) {
-  const styleAttr = style || 'margin-bottom:6px;';
-  if (icon && icon.startsWith('http')) {
-    return `<img src="${icon}" style="width:26px;height:26px;object-fit:contain;${styleAttr}" onerror="this.style.display='none'">`;
-  }
-  return `<i class="fas ${icon || 'fa-robot'}" style="${styleAttr}"></i>`;
-}
-
-async function loadScripts(retryCount = 0) {
-  try {
-    const res = await fetch('/api/scripts', { credentials: 'include' });
-    const data = await res.json();
-    if (!data.success) throw new Error('load scripts failed');
-    renderScriptSelect(data.scripts);
-  } catch (e) {
-    console.error(e);
-    // Retry dikit kalau gagal (misal cold start server / koneksi lemot), biar gak nyangkut kosong selamanya
-    if (retryCount < 3) {
-      setTimeout(() => loadScripts(retryCount + 1), 2000);
-    }
-  }
-}
-
-function renderScriptSelect(scripts) {
-  const grid = document.getElementById('scriptSelectGrid');
-  if (!grid) return;
-
-  if (!scripts || scripts.length === 0) {
-    grid.innerHTML = `<p style="grid-column:1/-1;text-align:center;color:var(--text-muted);font-size:12px;font-weight:600;padding:12px;">Belum ada script tersedia</p>`;
-    return;
-  }
-
-  grid.innerHTML = scripts.map((s, i) => `
-    <div class="select-box ${i === 0 ? 'active' : ''}" onclick="selectScript(this)" data-script="${s.script_key}" id="scriptOption-${s.script_key}">
-      ${renderScriptIcon(s.icon)}
-      <h4>${s.display_name}</h4>
-      <p>${s.subtitle || ''}</p>
+<div class="tutorial-overlay" id="tutorialOverlay">
+  <div class="tutorial-dim" id="tutorialDim"></div>
+  <div class="tutorial-spotlight-ring" id="tutorialRing"></div>
+  <i class="fas fa-arrow-up tutorial-arrow" id="tutorialArrow"></i>
+  <div class="tutorial-card" id="tutorialCard">
+    <span class="tutorial-step-badge" id="tutorialStepBadge">STEP 1/5</span>
+    <h4 id="tutorialTitle">Judul</h4>
+    <p id="tutorialDesc">Deskripsi</p>
+    <div class="tutorial-card-footer">
+      <button class="tutorial-skip" onclick="skipTutorial()">Lewati</button>
+      <div class="tutorial-dots" id="tutorialDots"></div>
+      <button class="btn btn-orange tutorial-next" id="tutorialNextBtn" onclick="nextTutorialStep()">Lanjut <i class="fas fa-arrow-right"></i></button>
     </div>
-  `).join('');
-}
+  </div>
+</div>
 
-// ============================================================
-// PACKAGE / SCRIPT SELECT
-// ============================================================
-function renderPackages() {
-  const grid = document.getElementById('packageGrid');
-  grid.innerHTML = PACKAGES.map((pkg, i) => {
-    const isActive = currentUser.coins >= pkg.coin;
-    return `
-      <div class="select-box ${i === 0 ? 'active' : ''}" style="${!isActive ? 'opacity:.5;cursor:not-allowed;' : ''}"
-           onclick="${isActive ? `selectPackage(this, ${pkg.days}, ${pkg.coin})` : ''}">
-        <i class="fas ${pkg.icon}"></i>
-        <h4>${pkg.label}</h4>
-        <p style="font-size:11px;font-weight:700;">🪙 ${pkg.coin} Polar Coin</p>
-        ${!isActive ? '<p style="color:var(--red);font-size:9px;font-weight:700;margin-top:2px;">Koin tidak cukup</p>' : ''}
-      </div>`;
-  }).join('');
-}
+<div class="channel-popup-overlay" id="channelPopupOverlay">
+  <div class="channel-popup-box">
+    <button class="channel-popup-close" onclick="closeChannelPopup()"><i class="fas fa-times"></i></button>
+    <div class="channel-popup-icon"><i class="fab fa-whatsapp"></i></div>
+    <h3>Gabung Saluran Info!</h3>
+    <p>Jangan ketinggalan info server maintenance, update fitur, promo Polar Coin, dan pengumuman penting lainnya. Join saluran WhatsApp resmi Polar.web.id sekarang.</p>
+    <a href="https://whatsapp.com/channel/0029VbCygPVLNSa6i1SxQ214" target="_blank" class="btn btn-orange btn-full" onclick="closeChannelPopup()"><i class="fab fa-whatsapp"></i> Join Sekarang</a>
+    <button class="btn btn-close-modal btn-full" style="margin-top:8px;" onclick="closeChannelPopup()">Nanti Aja</button>
+  </div>
+</div>
 
-function selectScript(el) {
-  if (el.dataset.offline === 'true') {
-    showToast('⚠️ Script ini lagi offline, gak bisa dipilih dulu.', 'error');
-    return;
-  }
-  document.querySelectorAll('.select-box[data-script]').forEach(b => b.classList.remove('active'));
-  el.classList.add('active');
-}
+<div class="pairing-overlay" id="pairingOverlay">
+  <div class="pairing-box">
+    <div style="text-align:center;margin-bottom:12px;">
+      <span style="font-size:40px;">🔗</span>
+      <h3 style="font-weight:900;font-size:20px;margin-top:6px;text-transform:uppercase;">Tautkan Perangkat</h3>
+      <p style="color:var(--text-muted);font-size:12px;font-weight:500;">Scan atau masukkan kode di WhatsApp</p>
+    </div>
+    <div class="pairing-code" id="pairingCodeDisplay">Menunggu...</div>
+    <ol>
+      <li>Buka WhatsApp → Settings</li>
+      <li>Perangkat Tertaut → Tautkan Perangkat</li>
+      <li>Masukkan kode di atas</li>
+    </ol>
+    <button class="btn btn-orange btn-full" style="margin-top:12px;" onclick="copyPairingCode()"><i class="fas fa-copy"></i> Salin Kode</button>
+    <button class="btn btn-close-modal btn-full" style="margin-top:6px;" onclick="closePairingModal()">Tutup</button>
+  </div>
+</div>
 
-function selectPackage(el, days, coin) {
-  document.querySelectorAll('#packageGrid .select-box').forEach(b => b.classList.remove('active'));
-  el.classList.add('active');
-  selectedDays = days;
-  selectedCoin = coin;
-}
+<nav class="navbar">
+  <div class="nav-brand" data-tut="brand"><span class="brand-icon">✦</span> POLAR.WEB.ID</div>
+  <div class="nav-right">
+    <div class="coin-badge" data-tut="coin"><i class="fas fa-coins"></i> <span id="coinCount">0</span></div>
+    <div class="profile-btn" onclick="navTo('profile')" data-tut="profile">
+      <img id="navAvatar" src="https://ui-avatars.com/api/?name=U" alt="Avatar">
+      <span class="hide-mobile" id="navName">...</span>
+    </div>
+    <button class="menu-btn" onclick="toggleMenu()" data-tut="menu"><i class="fas fa-bars"></i></button>
+  </div>
+</nav>
 
-// ============================================================
-// EARN COIN
-// ============================================================
-function earnCoin() {
-  window.location.href = '/api/earn/start';
-}
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleMenu()"></div>
+<div class="sidebar" id="sidebar">
+  <div class="sidebar-header">
+    <div class="nav-brand" style="font-size:14px;"><span class="brand-icon">✦</span> MENU</div>
+    <div style="display:flex;gap:6px;">
+      <button class="sidebar-close" onclick="toggleTheme()"><i class="fas fa-moon" id="themeIcon"></i></button>
+      <button class="sidebar-close lang-toggle-btn" onclick="toggleLang()"><span class="lang-toggle-label">EN</span></button>
+      <button class="sidebar-close" onclick="toggleMenu()"><i class="fas fa-times"></i></button>
+    </div>
+  </div>
 
-// Cek balikan dari /api/earn/callback (?earn=success&coins=X / pending / expired / error)
-function checkEarnCoinReturn() {
-  const params = new URLSearchParams(window.location.search);
-  const earn = params.get('earn');
-  if (!earn) return;
+  <div class="sidebar-section-label" data-i18n="nav_section_main">Menu Utama</div>
+  <a href="#" class="nav-link" onclick="navTo('home'); toggleMenu();" data-tut="nav-home"><i class="fas fa-home"></i> <span data-i18n="nav_home">HOME</span></a>
+  <a href="#" class="nav-link" onclick="navTo('event'); toggleMenu();" data-tut="nav-event"><i class="fas fa-bullhorn"></i> <span data-i18n="nav_event">EVENT</span></a>
+  <a href="#" class="nav-link" onclick="navTo('status'); toggleMenu();" data-tut="nav-status"><i class="fas fa-server"></i> <span data-i18n="nav_status">STATUS</span></a>
+  <a href="#" class="nav-link" onclick="navTo('claim'); toggleMenu();" data-tut="nav-claim"><i class="fas fa-download"></i> <span data-i18n="nav_claim">CLAIM</span></a>
+  <a href="#" class="nav-link" onclick="navTo('sessions'); toggleMenu();" data-tut="nav-sessions"><i class="fas fa-robot"></i> <span data-i18n="nav_sessions">SESSIONS</span></a>
+  <a href="/store" target="_blank" class="nav-link"><i class="fas fa-store"></i> <span data-i18n="nav_shop">SHOP</span></a>
+  <a href="#" class="nav-link" onclick="toggleMenu(); setTimeout(startTutorial, 350);"><i class="fas fa-circle-question"></i> <span data-i18n="nav_tutorial">MULAI TUTORIAL</span></a>
 
-  history.replaceState(null, '', window.location.pathname);
+  <div class="sidebar-section-label" data-i18n="nav_section_account">Akun Saya</div>
+  <a href="#" class="nav-link" onclick="navTo('profile'); toggleMenu();"><i class="fas fa-user"></i> <span data-i18n="nav_profile">PROFILE</span></a>
+  <a href="#" class="nav-link" onclick="navTo('history'); toggleMenu();"><i class="fas fa-clock-rotate-left"></i> <span data-i18n="nav_history">RIWAYAT KOIN</span></a>
+  <a href="#" class="nav-link" onclick="navTo('redeem'); toggleMenu();"><i class="fas fa-ticket"></i> <span data-i18n="nav_redeem">REDEEM KODE</span></a>
+  <a href="#" class="nav-link" onclick="navTo('referral'); toggleMenu();"><i class="fas fa-user-plus"></i> <span data-i18n="nav_referral">AJAK TEMAN</span></a>
+  <a href="#" class="nav-link" onclick="earnCoin()" style="background:var(--gold);" data-tut="nav-earn"><i class="fas fa-coins" style="color:#111;"></i> <span data-i18n="nav_earn">EARN POLAR COIN</span></a>
 
-  if (earn === 'success') {
-    const coins = params.get('coins');
-    showToast(`🎉 +1 Polar Coin berhasil diklaim! Total: ${coins} 🪙`, 'gold');
-    if (currentUser) { currentUser.coins = Number(coins); renderUser(); renderPackages(); }
-    loadCoinHistory();
-  } else if (earn === 'pending') {
-    showToast('⏳ Selesaikan dulu earn coin yang sedang berjalan!', 'error');
-  } else if (earn === 'expired') {
-    showToast('⏰ Link kadaluarsa. Silakan earn coin lagi.', 'error');
-  } else if (earn === 'error') {
-    showToast('❌ Gagal klaim coin, coba lagi.', 'error');
-  }
-}
+  <div class="sidebar-section-label" data-i18n="nav_section_other">Lainnya</div>
+  <a href="#" class="nav-link" onclick="navTo('feedback'); toggleMenu();"><i class="fas fa-comment-dots"></i> <span data-i18n="nav_feedback">FEEDBACK</span></a>
+  <a href="#" class="nav-link" onclick="navTo('requestscript'); toggleMenu();"><i class="fas fa-square-plus"></i> <span data-i18n="nav_request_script">REQUEST SCRIPT</span></a>
+  <a href="#" class="nav-link" onclick="navTo('sponsor'); toggleMenu();"><i class="fas fa-handshake"></i> <span data-i18n="nav_sponsor">SPONSOR</span></a>
+  <a href="https://wa.me/6285715294026" target="_blank" class="nav-link" style="background:var(--green);color:#fff;"><i class="fab fa-whatsapp"></i> <span data-i18n="nav_cs">CUSTOMER SERVICE</span></a>
+  <a href="/privacy" class="nav-link"><i class="fas fa-shield-halved"></i> <span data-i18n="nav_privacy">KEBIJAKAN PRIVASI</span></a>
 
-// ============================================================
-// SESSIONS
-// ============================================================
-async function loadSessions() {
-  try {
-    const res = await fetch('/api/sessions', { credentials: 'include' });
-    const data = await res.json();
-    if (!data.success) return;
-    currentSessions = data.sessions;
-    renderSessions();
-  } catch (e) {
-    console.error(e);
-  }
-}
+  <a href="#" class="nav-link" onclick="logout()" style="background:var(--red);color:#fff;margin-top:auto;"><i class="fas fa-sign-out-alt"></i> <span data-i18n="nav_logout">LOGOUT</span></a>
+</div>
 
-function renderSessions() {
-  const total = currentSessions.length;
-  const free = MAX_SESSIONS - total;
+<div class="main-container">
 
-  document.getElementById('slotFreeHome').textContent = free;
-  document.getElementById('slotFreeClaim').textContent = free;
-  document.getElementById('sessionCountLabel').textContent = `${total} / ${MAX_SESSIONS}`;
-  document.getElementById('profileSessionCount').textContent = total;
-  document.getElementById('statTotal').textContent = total;
-  document.getElementById('statSlot').textContent = free;
-
-  const list = document.getElementById('sessionsList');
-  if (total === 0) {
-    list.innerHTML = `
-      <div class="card" style="text-align:center;padding:40px 16px;">
-        <div style="font-size:48px;margin-bottom:12px;opacity:.3;">🤖</div>
-        <h3 style="font-weight:900;font-size:20px;">Belum Ada Bot</h3>
-        <p style="color:var(--text-muted);font-size:13px;font-weight:500;margin-top:4px;">Claim server dulu untuk mulai menggunakan bot</p>
-        <button class="btn btn-orange" style="margin-top:16px;" onclick="navTo('claim')">CLAIM SEKARANG</button>
-      </div>`;
-    return;
-  }
-
-  list.innerHTML = currentSessions.map(s => {
-    const statusClass = s.status === 'online' ? 'bg-online' : (s.status === 'pending' ? 'bg-pending' : 'bg-offline');
-    const statusText = s.status === 'online' ? 'Online' : (s.status === 'pending' ? 'Pending' : 'Offline');
-    const showPairBtn = s.status === 'waiting_pair' || s.status === 'pending';
-    return `
-      <div class="card">
-        <div class="session-item">
-          <div>
-            <div class="session-phone"><i class="fab fa-whatsapp"></i> +${s.phone}</div>
-            <div style="font-size:9px;font-weight:700;color:var(--text-muted);margin-top:2px;">${s.script}</div>
-          </div>
-          <div class="badge-status ${statusClass}">${statusText}</div>
-        </div>
-        <div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:4px;">
-          ${showPairBtn ? `<button class="btn btn-sm btn-orange" onclick="openPairModal('${s.phone}')"><i class="fas fa-link"></i> Pairing</button>` : ''}
-          ${s.status === 'online' ? `<button class="btn btn-sm btn-success" onclick="showToast('Bot sedang online! ✅','success')"><i class="fas fa-circle"></i> Online</button>` : ''}
-          <button class="btn btn-sm btn-danger" onclick="deleteSession(${s.id}, '${s.phone}')"><i class="fas fa-trash"></i> Hapus</button>
-        </div>
-      </div>`;
-  }).join('');
-}
-
-async function createSessionWithCoin() {
-  const phoneRaw = document.getElementById('phoneInput').value.trim();
-  const scriptEl = document.querySelector('.select-box.active[data-script]');
-  const script = scriptEl ? scriptEl.dataset.script : 'phoenix_md';
-
-  if (scriptEl && scriptEl.dataset.offline === 'true') {
-    showToast('⚠️ Script ini lagi offline, pilih yang lain dulu.', 'error');
-    return;
-  }
-
-  if (!phoneRaw) { showToast('📱 Masukkan nomor WhatsApp', 'error'); return; }
-  if (currentUser.coins < selectedCoin) { showToast(`🪙 Polar Coin tidak cukup! Butuh ${selectedCoin} coin.`, 'error'); return; }
-  if (currentSessions.length >= MAX_SESSIONS) { showToast(`❌ Slot session penuh (maksimal ${MAX_SESSIONS})`, 'error'); return; }
-
-  let phone = phoneRaw.replace(/[^0-9]/g, '');
-  if (phone.startsWith('0')) phone = '62' + phone.substring(1);
-  if (!phone.startsWith('62')) phone = '62' + phone;
-  if (phone.length < 10) { showToast('📱 Nomor terlalu pendek', 'error'); return; }
-
-  const btn = document.getElementById('claimBtn');
-  btn.disabled = true;
-
-  try {
-    const res = await fetch('/api/sessions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ phone, script, days: selectedDays, coin: selectedCoin })
-    });
-    const data = await res.json();
-    if (!data.success) throw new Error(data.message || 'Gagal membuat session');
-
-    currentUser.coins = data.coins;
-    renderUser();
-    showToast(`✅ Server berhasil di-claim! ${selectedDays} hari aktif. 🎉`, 'success');
-    await loadSessions();
-    loadCoinHistory();
-    showPairingModal(phone);
-  } catch (e) {
-    showToast('❌ ' + e.message, 'error');
-  } finally {
-    btn.disabled = false;
-    btn.innerHTML = '<i class="fas fa-rocket"></i> CLAIM SERVER SEKARANG';
-  }
-}
-
-async function deleteSession(id, phone) {
-  if (!confirm(`Hapus session +${phone}?`)) return;
-  try {
-    const res = await fetch(`/api/sessions/${id}`, { method: 'DELETE', credentials: 'include' });
-    const data = await res.json();
-    if (!data.success) throw new Error(data.message || 'Gagal hapus session');
-    showToast('✅ Session dihapus', 'success');
-    await loadSessions();
-  } catch (e) {
-    showToast('❌ ' + e.message, 'error');
-  }
-}
-
-// ============================================================
-// PAIRING MODAL
-// ============================================================
-let pairInterval = null;
-
-function showPairingModal(phone) {
-  document.getElementById('pairingCodeDisplay').textContent = 'Menunggu pairing code...';
-  document.getElementById('pairingOverlay').classList.add('active');
-
-  if (pairInterval) clearInterval(pairInterval);
-  pairInterval = setInterval(async () => {
-    try {
-      await loadSessions();
-      const s = currentSessions.find(x => x.phone === phone);
-      if (!s) return;
-      if (s.pairing_code) {
-        const code = s.pairing_code.match(/.{1,4}/g)?.join('-') || s.pairing_code;
-        document.getElementById('pairingCodeDisplay').textContent = code;
-      }
-      if (s.status === 'online') {
-        document.getElementById('pairingCodeDisplay').textContent = '✅ Bot Online!';
-        clearInterval(pairInterval);
-        setTimeout(closePairingModal, 2000);
-      }
-    } catch (e) { console.error(e); }
-  }, 3000);
-}
-
-function closePairingModal() {
-  if (pairInterval) clearInterval(pairInterval);
-  document.getElementById('pairingOverlay').classList.remove('active');
-}
-
-function copyPairingCode() {
-  const code = document.getElementById('pairingCodeDisplay').textContent;
-  if (code && !code.includes('Menunggu') && !code.includes('Online')) {
-    navigator.clipboard.writeText(code.replace(/-/g, ''));
-    showToast('✅ Kode disalin!', 'success');
-  }
-}
-
-function openPairModal(phone) {
-  showPairingModal(phone);
-}
-
-document.addEventListener('DOMContentLoaded', () => {
-  document.getElementById('pairingOverlay').addEventListener('click', function (e) {
-    if (e.target === this) closePairingModal();
-  });
-  document.getElementById('channelPopupOverlay')?.addEventListener('click', function (e) {
-    if (e.target === this) closeChannelPopup();
-  });
-});
-
-// ============================================================
-// REFERRAL
-// ============================================================
-async function loadReferral() {
-  try {
-    const res = await fetch('/api/referral', { credentials: 'include' });
-    const data = await res.json();
-    if (!data.success) return;
-
-    document.getElementById('referralCount').textContent = data.totalReferred;
-    document.getElementById('referralBonus').textContent = data.totalBonusEarned;
-    document.getElementById('referralLinkInput').value = `${window.location.origin}/login?ref=${data.referralCode}`;
-  } catch (e) {
-    console.error(e);
-  }
-}
-
-function copyReferralLink() {
-  const input = document.getElementById('referralLinkInput');
-  navigator.clipboard.writeText(input.value);
-  showToast('✅ Link referral disalin!', 'success');
-}
-
-// ============================================================
-// FEEDBACK
-// ============================================================
-let selectedRating = 0;
-
-function renderFeedbackStars() {
-  const container = document.getElementById('feedbackStars');
-  if (!container || container.dataset.rendered) return;
-  container.dataset.rendered = 'true';
-  container.innerHTML = [1, 2, 3, 4, 5].map(i => `<i class="fa-star far" style="cursor:pointer;color:var(--gold);" onclick="setRating(${i})" id="star-${i}"></i>`).join('');
-}
-
-function setRating(n) {
-  selectedRating = n;
-  for (let i = 1; i <= 5; i++) {
-    document.getElementById('star-' + i).className = i <= n ? 'fa-star fas' : 'fa-star far';
-  }
-}
-
-async function submitFeedback() {
-  const message = document.getElementById('feedbackMessage').value.trim();
-  if (!message) { showToast('💬 Tulis feedback dulu', 'error'); return; }
-
-  const btn = document.getElementById('feedbackBtn');
-  btn.disabled = true;
-  try {
-    const res = await fetch('/api/feedback', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
-      body: JSON.stringify({ message, rating: selectedRating || null })
-    });
-    const data = await res.json();
-    if (!data.success) { showToast('❌ ' + data.message, 'error'); return; }
-    showToast('✅ Makasih atas feedback-nya! 🙏', 'success');
-    document.getElementById('feedbackMessage').value = '';
-    setRating(0);
-  } catch (e) {
-    showToast('❌ Gagal kirim feedback', 'error');
-  } finally {
-    btn.disabled = false;
-  }
-}
-
-// ============================================================
-// REQUEST SCRIPT
-// ============================================================
-async function submitScriptRequest() {
-  const scriptName = document.getElementById('reqScriptName').value.trim();
-  const referenceLink = document.getElementById('reqScriptLink').value.trim();
-  const reason = document.getElementById('reqScriptReason').value.trim();
-  if (!scriptName) { showToast('🤖 Isi nama script dulu', 'error'); return; }
-
-  const btn = document.getElementById('reqScriptBtn');
-  btn.disabled = true;
-  try {
-    const res = await fetch('/api/script-requests', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
-      body: JSON.stringify({ scriptName, referenceLink, reason })
-    });
-    const data = await res.json();
-    if (!data.success) { showToast('❌ ' + data.message, 'error'); return; }
-    showToast('✅ Request kamu udah masuk!', 'success');
-    document.getElementById('reqScriptName').value = '';
-    document.getElementById('reqScriptLink').value = '';
-    document.getElementById('reqScriptReason').value = '';
-  } catch (e) {
-    showToast('❌ Gagal kirim request', 'error');
-  } finally {
-    btn.disabled = false;
-  }
-}
-
-// ============================================================
-// SPONSOR
-// ============================================================
-async function submitSponsor() {
-  const name = document.getElementById('sponsorName').value.trim();
-  const contact = document.getElementById('sponsorContact').value.trim();
-  const company = document.getElementById('sponsorCompany').value.trim();
-  const message = document.getElementById('sponsorMessage').value.trim();
-  if (!name || !contact) { showToast('🤝 Nama & kontak wajib diisi', 'error'); return; }
-
-  const btn = document.getElementById('sponsorBtn');
-  btn.disabled = true;
-  try {
-    const res = await fetch('/api/sponsor', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
-      body: JSON.stringify({ name, contact, company, message })
-    });
-    const data = await res.json();
-    if (!data.success) { showToast('❌ ' + data.message, 'error'); return; }
-    showToast('✅ Pengajuan sponsor terkirim, makasih!', 'success');
-    document.getElementById('sponsorName').value = '';
-    document.getElementById('sponsorContact').value = '';
-    document.getElementById('sponsorCompany').value = '';
-    document.getElementById('sponsorMessage').value = '';
-  } catch (e) {
-    showToast('❌ Gagal kirim pengajuan', 'error');
-  } finally {
-    btn.disabled = false;
-  }
-}
-
-// ============================================================
-// REDEEM CODE
-// ============================================================
-async function redeemCode() {
-  const input = document.getElementById('redeemCodeInput');
-  const code = input.value.trim();
-  if (!code) { showToast('🎫 Masukkan kode dulu', 'error'); return; }
-
-  const btn = document.getElementById('redeemBtn');
-  btn.disabled = true;
-
-  try {
-    const res = await fetch('/api/redeem', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ code })
-    });
-    const data = await res.json();
-    if (!data.success) {
-      showToast('❌ ' + data.message, 'error');
-      return;
-    }
-    currentUser.coins = data.coins;
-    renderUser();
-    renderPackages();
-    showToast(`🎉 Berhasil! +${data.coinsAdded} Polar Coin`, 'gold');
-    input.value = '';
-    loadCoinHistory();
-  } catch (e) {
-    showToast('❌ Gagal redeem kode, coba lagi', 'error');
-  } finally {
-    btn.disabled = false;
-  }
-}
-
-// ============================================================
-// COIN HISTORY
-// ============================================================
-const REASON_LABELS = {
-  earn: '🪙 Earn Coin (Shortlink)',
-  claim_session: '🤖 Claim Server',
-  manual_adjust: '⚙️ Penyesuaian Manual'
-};
-
-function formatHistoryReason(reason) {
-  if (reason.startsWith('claim_session:')) {
-    const script = reason.split(':')[1];
-    return `🤖 Claim Server (${script})`;
-  }
-  if (reason.startsWith('redeem_code:')) {
-    const code = reason.split(':')[1];
-    return `🎫 Redeem Kode (${code})`;
-  }
-  if (reason.startsWith('referral_bonus:')) {
-    return `👥 Bonus Ajak Teman`;
-  }
-  if (reason === 'referral_signup_bonus') {
-    return `🎁 Bonus Daftar via Referral`;
-  }
-  return REASON_LABELS[reason] || reason;
-}
-
-function formatHistoryDate(ts) {
-  const d = new Date(Number(ts));
-  return d.toLocaleString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-}
-
-async function loadCoinHistory() {
-  try {
-    const res = await fetch('/api/coins/history', { credentials: 'include' });
-    const data = await res.json();
-    if (!data.success) return;
-    renderHistory(data.logs);
-  } catch (e) {
-    console.error(e);
-  }
-}
-
-function renderHistory(logs) {
-  const list = document.getElementById('historyList');
-  if (!list) return;
-
-  if (!logs || logs.length === 0) {
-    list.innerHTML = `
-      <div style="text-align:center;padding:24px 0;">
-        <div style="font-size:36px;margin-bottom:8px;opacity:.3;">🪙</div>
-        <p style="color:var(--text-muted);font-size:13px;font-weight:600;">Belum ada riwayat transaksi</p>
-      </div>`;
-    return;
-  }
-
-  list.innerHTML = logs.map(log => {
-    const isPlus = log.amount > 0;
-    return `
-      <div class="history-item">
-        <div class="history-left">
-          <div class="history-icon ${isPlus ? 'plus' : 'minus'}"><i class="fas ${isPlus ? 'fa-plus' : 'fa-minus'}"></i></div>
-          <div>
-            <div class="history-reason">${formatHistoryReason(log.reason)}</div>
-            <div class="history-date">${formatHistoryDate(log.created_at)}</div>
-          </div>
-        </div>
-        <div class="history-amount ${isPlus ? 'plus' : 'minus'}">${isPlus ? '+' : ''}${log.amount} 🪙</div>
-      </div>`;
-  }).join('');
-}
-
-// ============================================================
-// SERVER STATUS
-// ============================================================
-async function loadServerStatus(retryCount = 0) {
-  try {
-    const res = await fetch('/api/server-status');
-    const data = await res.json();
-    if (!data.success) throw new Error('load status failed');
-
-    renderStatusCards(data.scripts);
-    updateScriptAvailability(data.scripts);
-
-    const onlineCount = data.scripts.filter(s => s.online).length;
-    document.getElementById('statOnline').textContent = onlineCount;
-    document.getElementById('statOffline').textContent = data.scripts.length - onlineCount;
-  } catch (e) {
-    console.error(e);
-    if (retryCount < 3) {
-      setTimeout(() => loadServerStatus(retryCount + 1), 2000);
-    }
-  }
-}
-
-function renderStatusCards(scripts) {
-  const container = document.getElementById('statusCardsContainer');
-  if (!container) return;
-
-  if (!scripts || scripts.length === 0) {
-    container.innerHTML = `<p style="text-align:center;color:var(--text-muted);font-size:13px;font-weight:600;padding:20px;">Belum ada script yang dikonfigurasi</p>`;
-    return;
-  }
-
-  container.innerHTML = scripts.map(s => `
-    <div class="card" style="box-shadow:var(--shadow-heavy);">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-        <div style="display:flex;align-items:center;gap:10px;">
-          <div style="background:var(--orange);padding:8px;border:var(--border-thick);box-shadow:var(--shadow-light);">${renderScriptIcon(s.icon, 'color:#fff;font-size:14px;margin-bottom:0;')}</div>
-          <div><h3 style="font-size:14px;font-weight:900;">${s.display_name.toUpperCase()}</h3><div style="font-size:10px;font-weight:600;color:var(--text-muted);">Pterodactyl</div></div>
-        </div>
-        <div class="badge-status ${s.online ? 'bg-online' : 'bg-offline'}">${s.online ? 'ONLINE' : 'OFFLINE'}</div>
+  <!-- HOME -->
+  <div id="sec-home" class="section active">
+    <div class="hero">
+      <div class="slot-badge"><i class="fas fa-circle" style="font-size:8px;color:var(--orange);"></i> <span id="slotFreeHome">-</span> <span data-i18n="home_slots_available">SLOT TERSEDIA</span></div>
+      <h1><span data-i18n="home_title_1">Jadibot</span> <br><span data-i18n="home_title_2">WhatsApp Gratis</span></h1>
+      <p data-i18n="home_desc">Dapatkan server bot gratis. Claim sekarang sebelum slot habis!</p>
+      <div class="btn-group">
+        <button class="btn btn-orange" onclick="navTo('claim')"><i class="fas fa-download"></i> <span data-i18n="home_btn_claim">CLAIM SEKARANG</span></button>
+        <button class="btn btn-white" onclick="navTo('status')"><span data-i18n="home_btn_status">LIHAT STATUS</span> <i class="fas fa-arrow-right"></i></button>
+        <button class="btn btn-close-modal" onclick="startTutorial()" style="border:var(--border-thick);"><i class="fas fa-circle-question"></i> <span data-i18n="home_btn_tutorial">MULAI TUTORIAL</span></button>
       </div>
-      <div class="spec-row"><span style="font-weight:600;color:var(--text-muted);">RAM</span><span style="font-weight:900;">${s.ram}</span></div>
-      <div class="spec-row"><span style="font-weight:600;color:var(--text-muted);">PING</span><span style="font-weight:900;">${s.ping}</span></div>
     </div>
-  `).join('');
-}
+    <div id="homeEventTeaser"></div>
+  </div>
 
-function updateScriptAvailability(scripts) {
-  scripts.forEach(s => {
-    const box = document.getElementById('scriptOption-' + s.script_key);
-    if (!box) return;
+  <!-- EVENT -->
+  <div id="sec-event" class="section">
+    <div style="text-align:center;margin-bottom:16px;">
+      <div class="slot-badge" style="background:var(--gold);color:#111;"><i class="fas fa-bullhorn"></i> <span data-i18n="event_badge">INFO TERBARU</span></div>
+      <h1 style="font-weight:900;font-size:clamp(26px,6vw,36px);text-transform:uppercase;"><span data-i18n="event_title_1">EVENT &</span> <span style="background:var(--orange);color:#fff;padding:0 12px;transform:skew(-6deg);display:inline-block;border:var(--border-thick);box-shadow:var(--shadow-light);" data-i18n="event_title_2">PROMO</span></h1>
+      <p style="color:var(--text-muted);font-size:13px;font-weight:500;" data-i18n="event_desc">Jangan sampai ketinggalan</p>
+    </div>
+    <div id="eventList"></div>
+  </div>
 
-    let badge = box.querySelector('.script-offline-badge');
+  <!-- CLAIM -->
+  <div id="sec-claim" class="section">
+    <div style="text-align:center;margin-bottom:16px;">
+      <div class="slot-badge"><span id="slotFreeClaim">-</span> <span data-i18n="home_slots_available">SLOT TERSEDIA</span></div>
+      <h1 style="font-weight:900;font-size:clamp(26px,6vw,36px);text-transform:uppercase;"><span data-i18n="claim_title_1">CLAIM</span> <span style="background:#111;color:#fff;padding:0 12px;transform:skew(-6deg);display:inline-block;border:var(--border-thick);box-shadow:var(--shadow-light);" data-i18n="claim_title_2">SERVER</span></h1>
+      <p style="color:var(--text-muted);font-size:13px;font-weight:500;" data-i18n="claim_desc">Pilih paket dan claim server bot gratis</p>
+    </div>
 
-    if (!s.online) {
-      box.dataset.offline = 'true';
-      box.style.opacity = '.45';
-      box.style.cursor = 'not-allowed';
-      if (box.classList.contains('active')) {
-        box.classList.remove('active');
-        const firstOnline = scripts.find(x => x.online);
-        if (firstOnline) {
-          document.getElementById('scriptOption-' + firstOnline.script_key)?.classList.add('active');
-        }
-      }
-      if (!badge) {
-        badge = document.createElement('p');
-        badge.className = 'script-offline-badge';
-        badge.style.cssText = 'color:var(--red);font-size:9px;font-weight:700;margin-top:2px;';
-        badge.textContent = 'Sedang offline';
-        box.appendChild(badge);
-      }
-    } else {
-      box.dataset.offline = 'false';
-      box.style.opacity = '';
-      box.style.cursor = '';
-      badge?.remove();
-    }
-  });
-}
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <div style="display:flex;align-items:center;gap:12px;">
+          <div style="background:var(--orange);width:36px;height:36px;display:flex;align-items:center;justify-content:center;font-weight:900;color:#fff;font-size:16px;border:var(--border-thick);box-shadow:var(--shadow-light);" id="claimInitial">?</div>
+          <div><div style="font-size:9px;font-weight:700;color:var(--text-muted);" data-i18n="claim_login_as">LOGIN AS</div><div style="font-weight:900;font-size:14px;" id="claimName">...</div></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="font-weight:900;font-size:14px;"><i class="fas fa-coins"></i> <span id="claimCoinDisplay">0</span></span>
+          <button class="earn-btn" onclick="earnCoin()" style="font-size:9px;padding:3px 10px;"><i class="fas fa-plus"></i></button>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-title" data-i18n="claim_package_title">🪙 PAKET POLAR COIN</div>
+    <div class="grid-2" id="packageGrid"></div>
+
+    <div class="section-title" data-i18n="claim_script_title">⚙️ JENIS SCRIPT</div>
+    <div class="grid-3" id="scriptSelectGrid">
+      <div style="grid-column:1/-1;text-align:center;padding:24px 16px;">
+        <i class="fas fa-spinner fa-spin" style="font-size:24px;color:var(--orange);"></i>
+      </div>
+    </div>
+
+    <div class="card">
+      <div style="margin-bottom:10px;">
+        <label style="font-size:11px;font-weight:800;color:var(--text-muted);display:block;margin-bottom:4px;text-transform:uppercase;" data-i18n="claim_phone_label">📱 Nomor WhatsApp</label>
+        <input type="text" id="phoneInput" placeholder="628xxxxxxxxxx" data-i18n-placeholder="claim_phone_placeholder" style="width:100%;padding:12px;background:#f0f0f0;border:var(--border-thick);box-shadow:inset 2px 2px 0px 0px #111;color:#111;font-size:14px;font-weight:600;">
+      </div>
+    </div>
+
+    <button class="btn btn-orange" style="width:100%;margin-top:8px;padding:14px;font-size:14px;" id="claimBtn" onclick="createSessionWithCoin()">
+      <i class="fas fa-rocket"></i> <span data-i18n="claim_btn">CLAIM SERVER SEKARANG</span>
+    </button>
+  </div>
+
+  <!-- STATUS -->
+  <div id="sec-status" class="section">
+    <div style="text-align:center;margin-bottom:16px;">
+      <div class="slot-badge" style="background:#111;color:#fff;" data-i18n="status_badge">REAL-TIME MONITORING</div>
+      <h1 style="font-weight:900;font-size:clamp(26px,6vw,36px);text-transform:uppercase;"><span data-i18n="status_title_1">SERVER</span> <span style="background:var(--orange);color:#fff;padding:0 12px;transform:skew(-6deg);display:inline-block;border:var(--border-thick);box-shadow:var(--shadow-light);" data-i18n="status_title_2">STATUS</span></h1>
+    </div>
+
+    <div class="card">
+      <div class="status-grid">
+        <div class="stat-box"><h3 class="text-orange" id="statTotal">-</h3><p data-i18n="status_total">TOTAL</p></div>
+        <div class="stat-box"><h3 class="text-gold" id="statSlot">-</h3><p data-i18n="status_slot">SLOT</p></div>
+        <div class="stat-box"><h3 style="color:#111;" id="statOnline">-</h3><p data-i18n="status_online">ONLINE</p></div>
+        <div class="stat-box"><h3 class="text-orange" id="statOffline">-</h3><p data-i18n="status_offline">OFFLINE</p></div>
+      </div>
+    </div>
+
+    <div id="statusCardsContainer">
+      <div style="text-align:center;padding:40px 16px;">
+        <i class="fas fa-spinner fa-spin" style="font-size:32px;color:var(--orange);"></i>
+        <p style="color:var(--text-muted);font-size:12px;font-weight:600;margin-top:10px;" data-i18n="status_loading">Memuat status server...</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- SESSIONS -->
+  <div id="sec-sessions" class="section">
+    <div style="text-align:center;margin-bottom:16px;">
+      <div class="slot-badge"><span id="sessionCountLabel">0 / 10</span> <span data-i18n="sessions_badge_suffix">SESSION</span></div>
+      <h1 style="font-weight:900;font-size:clamp(26px,6vw,36px);text-transform:uppercase;"><span data-i18n="sessions_title_1">MY</span> <span style="background:var(--orange);color:#fff;padding:0 12px;transform:skew(-6deg);display:inline-block;border:var(--border-thick);box-shadow:var(--shadow-light);" data-i18n="sessions_title_2">BOTS</span></h1>
+    </div>
+    <div id="sessionsList"></div>
+  </div>
+
+  <!-- HISTORY -->
+  <div id="sec-history" class="section">
+    <div style="text-align:center;margin-bottom:16px;">
+      <div class="slot-badge" style="background:var(--gold);color:#111;"><i class="fas fa-coins"></i> <span data-i18n="history_badge">LOG TRANSAKSI</span></div>
+      <h1 style="font-weight:900;font-size:clamp(26px,6vw,36px);text-transform:uppercase;"><span data-i18n="history_title_1">RIWAYAT</span> <span style="background:var(--orange);color:#fff;padding:0 12px;transform:skew(-6deg);display:inline-block;border:var(--border-thick);box-shadow:var(--shadow-light);" data-i18n="history_title_2">KOIN</span></h1>
+      <p style="color:var(--text-muted);font-size:13px;font-weight:500;" data-i18n="history_desc">50 transaksi terakhir</p>
+    </div>
+    <div class="card" id="historyCard"><div id="historyList"></div></div>
+  </div>
+
+  <!-- REDEEM -->
+  <div id="sec-redeem" class="section">
+    <div style="text-align:center;margin-bottom:16px;">
+      <div class="slot-badge" style="background:var(--gold);color:#111;"><i class="fas fa-ticket"></i> <span data-i18n="redeem_badge">PUNYA KODE?</span></div>
+      <h1 style="font-weight:900;font-size:clamp(26px,6vw,36px);text-transform:uppercase;"><span data-i18n="redeem_title_1">REDEEM</span> <span style="background:var(--orange);color:#fff;padding:0 12px;transform:skew(-6deg);display:inline-block;border:var(--border-thick);box-shadow:var(--shadow-light);" data-i18n="redeem_title_2">KODE</span></h1>
+      <p style="color:var(--text-muted);font-size:13px;font-weight:500;" data-i18n="redeem_desc">Masukkan kode promo/giveaway buat dapetin Polar Coin gratis</p>
+    </div>
+    <div class="card">
+      <label style="font-size:11px;font-weight:800;color:var(--text-muted);display:block;margin-bottom:4px;text-transform:uppercase;" data-i18n="redeem_label">Kode Redeem</label>
+      <input type="text" id="redeemCodeInput" placeholder="Contoh: POLAR2026" style="width:100%;padding:12px;background:#f0f0f0;border:var(--border-thick);box-shadow:inset 2px 2px 0px 0px #111;color:#111;font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px;">
+      <button class="btn btn-orange btn-full" id="redeemBtn" onclick="redeemCode()"><i class="fas fa-ticket"></i> <span data-i18n="redeem_btn">REDEEM SEKARANG</span></button>
+    </div>
+  </div>
+
+  <!-- REFERRAL -->
+  <div id="sec-referral" class="section">
+    <div style="text-align:center;margin-bottom:16px;">
+      <div class="slot-badge" style="background:var(--gold);color:#111;"><i class="fas fa-gift"></i> <span data-i18n="referral_badge">AJAK, DAPET KOIN</span></div>
+      <h1 style="font-weight:900;font-size:clamp(26px,6vw,36px);text-transform:uppercase;"><span data-i18n="referral_title_1">AJAK</span> <span style="background:var(--orange);color:#fff;padding:0 12px;transform:skew(-6deg);display:inline-block;border:var(--border-thick);box-shadow:var(--shadow-light);" data-i18n="referral_title_2">TEMAN</span></h1>
+      <p style="color:var(--text-muted);font-size:13px;font-weight:500;" data-i18n="referral_desc">Undang teman pakai link kamu, dua-duanya dapet Polar Coin gratis!</p>
+    </div>
+
+    <div class="card" style="text-align:center;">
+      <div style="display:flex;justify-content:center;gap:20px;margin-bottom:16px;">
+        <div>
+          <div style="font-size:24px;font-weight:900;color:var(--orange);" id="referralCount">0</div>
+          <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;" data-i18n="referral_count_label">Teman Diundang</div>
+        </div>
+        <div style="width:2px;background:#111;"></div>
+        <div>
+          <div style="font-size:24px;font-weight:900;color:var(--gold);" id="referralBonus">0</div>
+          <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;" data-i18n="referral_bonus_label">Total Bonus Koin</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <label style="font-size:11px;font-weight:800;color:var(--text-muted);display:block;margin-bottom:8px;text-transform:uppercase;" data-i18n="referral_link_label">Link Referral Kamu</label>
+      <div style="display:flex;gap:8px;">
+        <input type="text" id="referralLinkInput" readonly style="flex:1;padding:12px;background:#f0f0f0;border:var(--border-thick);box-shadow:inset 2px 2px 0px 0px #111;color:#111;font-size:12px;font-weight:700;font-family:monospace;">
+        <button class="btn btn-orange" onclick="copyReferralLink()"><i class="fas fa-copy"></i></button>
+      </div>
+      <p style="font-size:11px;color:var(--text-muted);font-weight:600;margin-top:10px;" data-i18n="referral_explain">🎁 Kamu dapet +5 koin tiap orang yang daftar pakai link ini. Temanmu juga langsung dapet +2 koin bonus pas daftar!</p>
+    </div>
+  </div>
+
+  <!-- FEEDBACK -->
+  <div id="sec-feedback" class="section">
+    <div style="text-align:center;margin-bottom:16px;">
+      <div class="slot-badge" style="background:var(--gold);color:#111;"><i class="fas fa-comment-dots"></i> <span data-i18n="feedback_badge">SUARA KAMU PENTING</span></div>
+      <h1 style="font-weight:900;font-size:clamp(26px,6vw,36px);text-transform:uppercase;"><span data-i18n="feedback_title_1">KASIH</span> <span style="background:var(--orange);color:#fff;padding:0 12px;transform:skew(-6deg);display:inline-block;border:var(--border-thick);box-shadow:var(--shadow-light);" data-i18n="feedback_title_2">FEEDBACK</span></h1>
+      <p style="color:var(--text-muted);font-size:13px;font-weight:500;" data-i18n="feedback_desc">Ada saran, kritik, atau nemu bug? Kasih tau kami</p>
+    </div>
+    <div class="card">
+      <label style="font-size:11px;font-weight:800;color:var(--text-muted);display:block;margin-bottom:8px;text-transform:uppercase;" data-i18n="feedback_rating_label">Rating (opsional)</label>
+      <div id="feedbackStars" style="display:flex;gap:8px;margin-bottom:16px;font-size:24px;"></div>
+      <label style="font-size:11px;font-weight:800;color:var(--text-muted);display:block;margin-bottom:4px;text-transform:uppercase;" data-i18n="feedback_message_label">Pesan Kamu</label>
+      <textarea id="feedbackMessage" placeholder="Ceritain di sini..." data-i18n-placeholder="feedback_message_placeholder" style="width:100%;min-height:100px;padding:12px;background:#f0f0f0;border:var(--border-thick);box-shadow:inset 2px 2px 0px 0px #111;color:#111;font-size:14px;font-weight:600;font-family:'Space Grotesk',sans-serif;margin-bottom:12px;resize:vertical;"></textarea>
+      <button class="btn btn-orange btn-full" id="feedbackBtn" onclick="submitFeedback()"><i class="fas fa-paper-plane"></i> <span data-i18n="feedback_btn">KIRIM FEEDBACK</span></button>
+    </div>
+  </div>
+
+  <!-- REQUEST SCRIPT -->
+  <div id="sec-requestscript" class="section">
+    <div style="text-align:center;margin-bottom:16px;">
+      <div class="slot-badge" style="background:var(--gold);color:#111;"><i class="fas fa-square-plus"></i> <span data-i18n="reqscript_badge">USUL SCRIPT BARU</span></div>
+      <h1 style="font-weight:900;font-size:clamp(26px,6vw,36px);text-transform:uppercase;"><span data-i18n="reqscript_title_1">REQUEST</span> <span style="background:var(--orange);color:#fff;padding:0 12px;transform:skew(-6deg);display:inline-block;border:var(--border-thick);box-shadow:var(--shadow-light);" data-i18n="reqscript_title_2">SCRIPT</span></h1>
+      <p style="color:var(--text-muted);font-size:13px;font-weight:500;" data-i18n="reqscript_desc">Mau script bot tertentu ditambahin? Kasih tau kami</p>
+    </div>
+    <div class="card">
+      <label style="font-size:11px;font-weight:800;color:var(--text-muted);display:block;margin-bottom:4px;text-transform:uppercase;" data-i18n="reqscript_name_label">Nama Script</label>
+      <input type="text" id="reqScriptName" placeholder="Contoh: NeoFlare MD" style="width:100%;padding:12px;background:#f0f0f0;border:var(--border-thick);box-shadow:inset 2px 2px 0px 0px #111;color:#111;font-size:14px;font-weight:600;margin-bottom:12px;">
+      <label style="font-size:11px;font-weight:800;color:var(--text-muted);display:block;margin-bottom:4px;text-transform:uppercase;" data-i18n="reqscript_link_label">Link Referensi (opsional)</label>
+      <input type="text" id="reqScriptLink" placeholder="https://github.com/..." style="width:100%;padding:12px;background:#f0f0f0;border:var(--border-thick);box-shadow:inset 2px 2px 0px 0px #111;color:#111;font-size:14px;font-weight:600;margin-bottom:12px;">
+      <label style="font-size:11px;font-weight:800;color:var(--text-muted);display:block;margin-bottom:4px;text-transform:uppercase;" data-i18n="reqscript_reason_label">Kenapa Pengen Script Ini?</label>
+      <textarea id="reqScriptReason" placeholder="Ceritain alasannya..." data-i18n-placeholder="feedback_message_placeholder" style="width:100%;min-height:80px;padding:12px;background:#f0f0f0;border:var(--border-thick);box-shadow:inset 2px 2px 0px 0px #111;color:#111;font-size:14px;font-weight:600;font-family:'Space Grotesk',sans-serif;margin-bottom:12px;resize:vertical;"></textarea>
+      <button class="btn btn-orange btn-full" id="reqScriptBtn" onclick="submitScriptRequest()"><i class="fas fa-paper-plane"></i> <span data-i18n="reqscript_btn">KIRIM REQUEST</span></button>
+    </div>
+  </div>
+
+  <!-- SPONSOR -->
+  <div id="sec-sponsor" class="section">
+    <div style="text-align:center;margin-bottom:16px;">
+      <div class="slot-badge" style="background:var(--gold);color:#111;"><i class="fas fa-handshake"></i> <span data-i18n="sponsor_badge">KERJA SAMA</span></div>
+      <h1 style="font-weight:900;font-size:clamp(26px,6vw,36px);text-transform:uppercase;"><span data-i18n="sponsor_title_1">JADI</span> <span style="background:var(--orange);color:#fff;padding:0 12px;transform:skew(-6deg);display:inline-block;border:var(--border-thick);box-shadow:var(--shadow-light);" data-i18n="sponsor_title_2">SPONSOR</span></h1>
+      <p style="color:var(--text-muted);font-size:13px;font-weight:500;" data-i18n="sponsor_desc">Mau bantu biaya server atau kerja sama promosi? Isi form ini</p>
+    </div>
+    <div class="card">
+      <label style="font-size:11px;font-weight:800;color:var(--text-muted);display:block;margin-bottom:4px;text-transform:uppercase;" data-i18n="sponsor_name_label">Nama</label>
+      <input type="text" id="sponsorName" placeholder="Nama kamu / perusahaan" style="width:100%;padding:12px;background:#f0f0f0;border:var(--border-thick);box-shadow:inset 2px 2px 0px 0px #111;color:#111;font-size:14px;font-weight:600;margin-bottom:12px;">
+      <label style="font-size:11px;font-weight:800;color:var(--text-muted);display:block;margin-bottom:4px;text-transform:uppercase;" data-i18n="sponsor_contact_label">Kontak (Email / WhatsApp)</label>
+      <input type="text" id="sponsorContact" placeholder="email@kamu.com atau 08xxxx" style="width:100%;padding:12px;background:#f0f0f0;border:var(--border-thick);box-shadow:inset 2px 2px 0px 0px #111;color:#111;font-size:14px;font-weight:600;margin-bottom:12px;">
+      <label style="font-size:11px;font-weight:800;color:var(--text-muted);display:block;margin-bottom:4px;text-transform:uppercase;" data-i18n="sponsor_company_label">Perusahaan/Brand (opsional)</label>
+      <input type="text" id="sponsorCompany" placeholder="Nama brand" style="width:100%;padding:12px;background:#f0f0f0;border:var(--border-thick);box-shadow:inset 2px 2px 0px 0px #111;color:#111;font-size:14px;font-weight:600;margin-bottom:12px;">
+      <label style="font-size:11px;font-weight:800;color:var(--text-muted);display:block;margin-bottom:4px;text-transform:uppercase;" data-i18n="sponsor_message_label">Pesan</label>
+      <textarea id="sponsorMessage" placeholder="Ceritain tawaran kerja samanya..." style="width:100%;min-height:80px;padding:12px;background:#f0f0f0;border:var(--border-thick);box-shadow:inset 2px 2px 0px 0px #111;color:#111;font-size:14px;font-weight:600;font-family:'Space Grotesk',sans-serif;margin-bottom:12px;resize:vertical;"></textarea>
+      <button class="btn btn-orange btn-full" id="sponsorBtn" onclick="submitSponsor()"><i class="fas fa-paper-plane"></i> <span data-i18n="sponsor_btn">KIRIM PENGAJUAN</span></button>
+    </div>
+  </div>
+
+  <!-- PROFILE -->
+  <div id="sec-profile" class="section">
+    <div style="text-align:center;margin-bottom:24px;margin-top:8px;">
+      <div style="position:relative;display:inline-block;">
+        <img id="profileAvatar" src="https://ui-avatars.com/api/?name=U" style="width:80px;height:80px;border:var(--border-thick);box-shadow:var(--shadow-light);">
+        <div style="position:absolute;top:-10px;right:-10px;background:var(--orange);color:#fff;padding:2px 14px;font-size:10px;font-weight:900;border:var(--border-thick);box-shadow:var(--shadow-light);transform:rotate(6deg);" data-i18n="profile_you_badge">✦ YOU!</div>
+      </div>
+      <h1 style="font-weight:900;font-size:26px;margin-top:12px;text-transform:uppercase;" id="profileName">...</h1>
+      <p style="color:var(--text-muted);font-size:13px;font-weight:500;" id="profileEmail">...</p>
+      <div style="background:#fff;border:var(--border-thick);box-shadow:var(--shadow-light);display:inline-flex;align-items:center;gap:12px;padding:6px 18px;margin-top:12px;">
+        <div style="font-weight:900;font-size:14px;"><i class="fas fa-coins"></i> <span id="profileCoinDisplay">0</span></div>
+        <div style="font-size:10px;font-weight:800;letter-spacing:1px;color:var(--text-muted);">POLAR COIN</div>
+        <button class="earn-btn" onclick="earnCoin()" style="font-size:9px;padding:3px 10px;"><i class="fas fa-plus"></i> EARN</button>
+      </div>
+      <div style="margin-top:12px;">
+        <a href="#" onclick="logout();return false;" style="color:#111;font-size:12px;font-weight:800;text-decoration:none;border:var(--border-thick);padding:4px 16px;box-shadow:var(--shadow-light);background:#fff;display:inline-block;"><span data-i18n="profile_logout">LOGOUT</span> <i class="fas fa-arrow-right"></i></a>
+      </div>
+    </div>
+
+    <div class="card" style="text-align:center;padding:32px 16px;">
+      <div style="background:#f0f0f0;width:48px;height:48px;display:inline-flex;justify-content:center;align-items:center;font-size:24px;color:#111;border:var(--border-thick);box-shadow:var(--shadow-light);margin-bottom:12px;">
+        <i class="fas fa-chart-simple"></i>
+      </div>
+      <h2 style="font-weight:900;font-size:20px;margin-bottom:4px;text-transform:uppercase;" data-i18n="profile_stat_title">STATISTIK</h2>
+      <p style="color:var(--text-muted);font-size:13px;font-weight:500;"><span data-i18n="profile_total_session">Total Session:</span> <strong id="profileSessionCount">0</strong> / 10</p>
+      <p style="color:var(--text-muted);font-size:13px;font-weight:500;margin-top:4px;"><span data-i18n="profile_coin">Polar Coin:</span> <strong class="text-gold" id="profileCoinStat">0</strong></p>
+      <button class="btn btn-orange" style="margin-top:16px;" onclick="navTo('claim')"><span data-i18n="profile_btn_claim">CLAIM SERVER</span> <i class="fas fa-arrow-right"></i></button>
+    </div>
+  </div>
+
+</div>
+
+<script src="i18n.js"></script>
+<script src="dashboard.js"></script>
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js').catch(() => {});
+    });
+  }
+</script>
+</body>
+</html>
