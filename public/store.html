@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#ff5e00">
+<meta name="description" content="Katalog produk Polar.web.id — pesan langsung lewat WhatsApp">
+<meta name="robots" content="index, follow">
+<link rel="canonical" href="https://polar.web.id/store">
+<link rel="manifest" href="/manifest.json">
+<link rel="icon" href="/icons/icon-192.png">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<title>Toko — Polar.web.id</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="stylesheet" href="style.css">
+<script>
+  (function() {
+    const saved = localStorage.getItem('polar_theme');
+    const theme = saved || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    if (theme === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+  })();
+</script>
+<style>
+  .store-wrap { max-width: 900px; margin: 0 auto; padding: 24px 16px 60px; }
+  .store-hero { text-align: center; margin-bottom: 24px; }
+  .store-hero h1 { font-size: clamp(26px,6vw,36px); font-weight: 900; text-transform: uppercase; margin-bottom: 6px; }
+  .store-hero p { color: var(--text-muted); font-size: 13px; font-weight: 500; }
+
+  .category-tabs { display: flex; gap: 8px; overflow-x: auto; margin-bottom: 20px; padding-bottom: 4px; }
+  .category-tab {
+    flex-shrink: 0; padding: 8px 16px; font-size: 11px; font-weight: 900; text-transform: uppercase; white-space: nowrap;
+    border: var(--border-thick); box-shadow: var(--shadow-light); background: #fff; color: #111; cursor: pointer;
+    transition: var(--transition);
+  }
+  .category-tab.active { background: var(--orange); color: #fff; box-shadow: var(--shadow-heavy); }
+  [data-theme="dark"] .category-tab { background: #2a2a2a; color: #f2f2f2; }
+
+  .product-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
+  @media (min-width: 640px) { .product-grid { grid-template-columns: repeat(3, 1fr); } }
+
+  .product-card {
+    background: var(--bg-card); border: var(--border-thick); box-shadow: var(--shadow-light);
+    overflow: hidden; transition: var(--transition); display: flex; flex-direction: column;
+  }
+  .product-card:hover { transform: translate(1px,1px); box-shadow: 5px 5px 0px 0px #111; }
+  .product-card-img { width: 100%; aspect-ratio: 1/1; object-fit: cover; background: #eee; border-bottom: var(--border-thick); }
+  .product-card-body { padding: 10px 12px 12px; display: flex; flex-direction: column; flex: 1; }
+  .product-card-category { font-size: 9px; font-weight: 900; color: var(--orange); text-transform: uppercase; margin-bottom: 4px; letter-spacing: .3px; }
+  .product-card h3 { font-size: 13px; font-weight: 900; margin-bottom: 4px; line-height: 1.3; }
+  .product-card-desc { font-size: 11px; font-weight: 500; color: var(--text-muted); line-height: 1.5; margin-bottom: 8px; flex: 1; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .product-card-price { font-size: 15px; font-weight: 900; color: var(--text-main); margin-bottom: 8px; }
+  .product-card-order {
+    display: flex; align-items: center; justify-content: center; gap: 6px; padding: 8px; font-size: 11px; font-weight: 900;
+    text-transform: uppercase; background: var(--green); color: #fff; border: var(--border-thick); box-shadow: var(--shadow-light);
+    text-decoration: none; transition: var(--transition);
+  }
+  .product-card-order:hover { transform: translate(2px,2px); box-shadow: 2px 2px 0px 0px #111; }
+
+  .store-empty { text-align: center; padding: 60px 16px; grid-column: 1/-1; }
+  .store-empty i { font-size: 48px; opacity: .3; margin-bottom: 12px; }
+  .store-empty p { color: var(--text-muted); font-weight: 600; font-size: 13px; }
+</style>
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="nav-brand"><span class="brand-icon">✦</span> POLAR.WEB.ID</div>
+  <div class="nav-right">
+    <a href="/dashboard" class="btn btn-white btn-sm" style="text-decoration:none;"><i class="fas fa-house"></i></a>
+    <button class="theme-toggle-btn" onclick="toggleTheme()"><i class="fas fa-moon" id="themeIcon"></i></button>
+  </div>
+</nav>
+
+<div class="store-wrap">
+  <div class="store-hero">
+    <div class="slot-badge" style="background:var(--gold);color:#111;"><i class="fas fa-store"></i> TOKO RESMI</div>
+    <h1>Katalog <span style="background:var(--orange);color:#fff;padding:0 12px;transform:skew(-6deg);display:inline-block;border:var(--border-thick);box-shadow:var(--shadow-light);">Produk</span></h1>
+    <p>Pilih produk, tap pesan, langsung chat WhatsApp buat order</p>
+  </div>
+
+  <div class="category-tabs" id="categoryTabs"></div>
+  <div class="product-grid" id="productGrid">
+    <div class="store-empty"><i class="fas fa-spinner fa-pulse"></i></div>
+  </div>
+</div>
+
+<script>
+const WA_NUMBER = '6285715294026';
+let allProducts = [];
+let activeCategory = 'Semua';
+
+function toggleTheme() {
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  if (isDark) { document.documentElement.removeAttribute('data-theme'); localStorage.setItem('polar_theme','light'); }
+  else { document.documentElement.setAttribute('data-theme','dark'); localStorage.setItem('polar_theme','dark'); }
+  document.getElementById('themeIcon').className = isDark ? 'fas fa-moon' : 'fas fa-sun';
+}
+document.getElementById('themeIcon').className = document.documentElement.getAttribute('data-theme') === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
+
+function formatRupiah(n) {
+  return 'Rp' + Number(n).toLocaleString('id-ID');
+}
+
+function buildWaLink(product) {
+  const message = `Halo! Saya mau order produk ini:\n\n*${product.title}*\nHarga: ${formatRupiah(product.price)}\n\nApakah masih tersedia?`;
+  return `https://wa.me/${WA_NUMBER}?text=${encodeURIComponent(message)}`;
+}
+
+async function loadProducts() {
+  try {
+    const res = await fetch('/api/products');
+    const data = await res.json();
+    if (!data.success) return;
+    allProducts = data.products;
+    renderCategoryTabs();
+    renderProducts();
+  } catch (e) {
+    console.error(e);
+    document.getElementById('productGrid').innerHTML = `
+      <div class="store-empty">
+        <i class="fas fa-triangle-exclamation"></i>
+        <p>Gagal memuat produk, coba refresh halaman</p>
+      </div>`;
+  }
+}
+
+function renderCategoryTabs() {
+  const categories = ['Semua', ...new Set(allProducts.map(p => p.category))];
+  const tabs = document.getElementById('categoryTabs');
+  tabs.innerHTML = categories.map(cat => `
+    <button class="category-tab ${cat === activeCategory ? 'active' : ''}" onclick="selectCategory('${cat.replace(/'/g, "\\'")}')">${cat}</button>
+  `).join('');
+}
+
+function selectCategory(cat) {
+  activeCategory = cat;
+  renderCategoryTabs();
+  renderProducts();
+}
+
+function renderProducts() {
+  const grid = document.getElementById('productGrid');
+  const filtered = activeCategory === 'Semua' ? allProducts : allProducts.filter(p => p.category === activeCategory);
+
+  if (filtered.length === 0) {
+    grid.innerHTML = `
+      <div class="store-empty">
+        <i class="fas fa-box-open"></i>
+        <p>Belum ada produk di kategori ini</p>
+      </div>`;
+    return;
+  }
+
+  grid.innerHTML = filtered.map(p => `
+    <div class="product-card">
+      ${p.image_url
+        ? `<img src="${p.image_url}" class="product-card-img" alt="${p.title}" onerror="this.style.display='none'">`
+        : `<div class="product-card-img" style="display:flex;align-items:center;justify-content:center;font-size:32px;color:#ccc;"><i class="fas fa-image"></i></div>`}
+      <div class="product-card-body">
+        <div class="product-card-category">${p.category}</div>
+        <h3>${p.title}</h3>
+        ${p.description ? `<p class="product-card-desc">${p.description}</p>` : ''}
+        <div class="product-card-price">${formatRupiah(p.price)}</div>
+        <a href="${buildWaLink(p)}" target="_blank" class="product-card-order"><i class="fab fa-whatsapp"></i> Pesan</a>
+      </div>
+    </div>
+  `).join('');
+}
+
+loadProducts();
+</script>
+</body>
+</html>
