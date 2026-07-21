@@ -47,6 +47,7 @@ const POLAR_I18N = {
     nav_claim: 'CLAIM',
     nav_sessions: 'SESSIONS',
     nav_subdomain: 'SUBDOMAIN',
+    nav_services: 'LAYANAN',
     nav_shop: 'TOKO',
     nav_profile: 'PROFILE',
     nav_history: 'RIWAYAT KOIN',
@@ -117,6 +118,16 @@ const POLAR_I18N = {
     subdomain_list_title: '🌐 SUBDOMAIN SAYA',
     subdomain_empty_title: 'Belum Ada Subdomain',
     subdomain_empty_desc: 'Klaim subdomain gratis pakai form di atas',
+
+    // ===== Name Generator =====
+    nav_namegen: 'NAME GENERATOR',
+    namegen_badge: 'GRATIS',
+    namegen_title_1: 'NAME',
+    namegen_title_2: 'GENERATOR',
+    namegen_desc: 'Generate nama orang Indonesia acak, gratis tanpa potong coin',
+    namegen_count_label: 'Jumlah Nama',
+    namegen_btn: 'GENERATE NAMA',
+    namegen_result_title: '📋 HASIL',
 
     // ===== Event =====
     event_badge: 'INFO TERBARU',
@@ -234,6 +245,7 @@ const POLAR_I18N = {
     nav_claim: 'CLAIM',
     nav_sessions: 'SESSIONS',
     nav_subdomain: 'SUBDOMAIN',
+    nav_services: 'SERVICES',
     nav_shop: 'SHOP',
     nav_profile: 'PROFILE',
     nav_history: 'COIN HISTORY',
@@ -304,6 +316,16 @@ const POLAR_I18N = {
     subdomain_list_title: '🌐 MY SUBDOMAINS',
     subdomain_empty_title: 'No Subdomains Yet',
     subdomain_empty_desc: 'Claim a free subdomain using the form above',
+
+    // ===== Name Generator =====
+    nav_namegen: 'NAME GENERATOR',
+    namegen_badge: 'FREE',
+    namegen_title_1: 'NAME',
+    namegen_title_2: 'GENERATOR',
+    namegen_desc: 'Generate random Indonesian names, free with no coin cost',
+    namegen_count_label: 'Number of Names',
+    namegen_btn: 'GENERATE NAMES',
+    namegen_result_title: '📋 RESULT',
 
     // ===== Event =====
     event_badge: 'LATEST NEWS',
