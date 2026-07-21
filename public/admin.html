@@ -80,6 +80,7 @@
     <button class="admin-tab-btn" onclick="switchTab('scriptrequests')" id="tabBtn-scriptrequests"><i class="fas fa-square-plus"></i> Req. Script</button>
     <button class="admin-tab-btn" onclick="switchTab('sponsor')" id="tabBtn-sponsor"><i class="fas fa-handshake"></i> Sponsor</button>
     <button class="admin-tab-btn" onclick="switchTab('products')" id="tabBtn-products"><i class="fas fa-box"></i> Produk</button>
+    <button class="admin-tab-btn" onclick="switchTab('domains')" id="tabBtn-domains"><i class="fas fa-globe"></i> Domain</button>
   </div>
 
   <!-- ===== TAB: KODE REDEEM ===== -->
@@ -342,6 +343,52 @@
     </div>
   </div>
 
+  <!-- ===== TAB: DOMAIN ===== -->
+  <div id="tab-domains" class="admin-tab-section">
+    <h1 style="font-weight:900;font-size:22px;text-transform:uppercase;margin-bottom:4px;">Kelola Domain (Subdomain Gratis)</h1>
+    <p style="color:var(--text-muted);font-size:13px;margin-bottom:20px;">Domain yang aktif bakal muncul jadi pilihan di form Klaim Subdomain user. Zone ID & API token didapet dari dashboard Cloudflare.</p>
+
+    <div class="card">
+      <div class="section-title" id="domainFormTitle">➕ TAMBAH DOMAIN BARU</div>
+      <input type="hidden" id="editDomainId" value="">
+      <div class="form-row full">
+        <div>
+          <label>Nama Domain (tanpa www/http)</label>
+          <input type="text" id="domainName" placeholder="Contoh: polarhost.my.id">
+        </div>
+      </div>
+      <div class="form-row full">
+        <div>
+          <label>Cloudflare Zone ID</label>
+          <input type="text" id="domainZoneId" placeholder="Zone ID dari dashboard Cloudflare">
+        </div>
+      </div>
+      <div class="form-row full">
+        <div>
+          <label>Cloudflare API Token</label>
+          <input type="text" id="domainApiToken" placeholder="API Token dengan permission Edit DNS">
+        </div>
+      </div>
+      <div class="form-row">
+        <div>
+          <label>Harga Klaim (Polar Coin)</label>
+          <input type="number" id="domainPriceCoins" placeholder="5" min="0" value="0">
+        </div>
+        <div>
+          <label>Urutan Tampil</label>
+          <input type="number" id="domainSortOrder" placeholder="0" value="0">
+        </div>
+      </div>
+      <button class="btn btn-orange btn-full" id="saveDomainBtn" onclick="saveDomain()"><i class="fas fa-plus"></i> Tambah Domain</button>
+      <button class="btn btn-close-modal btn-full" id="cancelEditDomainBtn" style="margin-top:6px;display:none;" onclick="cancelEditDomain()">Batal Edit</button>
+    </div>
+
+    <div class="card">
+      <div class="section-title">📋 DAFTAR DOMAIN</div>
+      <div id="domainsAdminList"></div>
+    </div>
+  </div>
+
 </div>
 
 <div class="toast" id="toast"></div>
@@ -379,6 +426,7 @@ function switchTab(tab) {
   if (tab === 'scriptrequests') loadScriptRequestsAdmin();
   if (tab === 'sponsor') loadSponsorAdmin();
   if (tab === 'products') loadProductsAdmin();
+  if (tab === 'domains') loadDomainsAdmin();
 }
 
 // ============================================================
@@ -1136,6 +1184,133 @@ async function deleteProduct(id, title) {
     showToast('✅ Produk dihapus', 'success');
     loadProductsAdmin();
   } catch (e) { showToast('❌ Gagal hapus produk', 'error'); }
+}
+
+// ============================================================
+// DOMAIN (buat fitur Subdomain Gratis)
+// ============================================================
+let currentDomainsAdmin = [];
+
+async function loadDomainsAdmin() {
+  try {
+    const res = await fetch('/api/admin/domains', { credentials: 'include' });
+    const data = await res.json();
+    if (data.success) {
+      currentDomainsAdmin = data.domains;
+      renderDomainsAdmin(data.domains);
+    }
+  } catch (e) { console.error(e); }
+}
+
+function maskToken(token) {
+  if (!token || token.length < 8) return '••••••••';
+  return token.slice(0, 4) + '••••••••' + token.slice(-4);
+}
+
+function renderDomainsAdmin(domains) {
+  const list = document.getElementById('domainsAdminList');
+  if (!domains || domains.length === 0) {
+    list.innerHTML = '<p style="text-align:center;padding:16px;color:var(--text-muted);font-size:13px;">Belum ada domain</p>';
+    return;
+  }
+  list.innerHTML = domains.map(d => {
+    const statusColor = d.active ? 'var(--green)' : 'var(--red)';
+    return `
+      <div class="card" style="margin-bottom:10px;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
+          <div>
+            <div style="font-weight:900;font-size:14px;"><i class="fas fa-globe" style="color:var(--orange);"></i> ${d.domain_name}</div>
+            <div style="font-size:10px;color:var(--text-muted);font-family:monospace;">Zone: ${d.cloudflare_zone_id} • Token: ${maskToken(d.cloudflare_api_token)}</div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:2px;"><i class="fas fa-coins"></i> ${d.price_coins} Polar Coin / klaim</div>
+          </div>
+          <span class="mini-badge" style="color:${statusColor};border-color:${statusColor};">${d.active ? 'Aktif' : 'Nonaktif'}</span>
+        </div>
+        <div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:10px;">
+          <button class="btn btn-sm btn-white" onclick='editDomain(${JSON.stringify(d).replace(/'/g, "&#39;")})'><i class="fas fa-pen"></i> Edit</button>
+          <button class="btn btn-sm ${d.active ? 'btn-danger' : 'btn-success'}" onclick="toggleDomain(${d.id}, ${!d.active})">${d.active ? 'Nonaktifin' : 'Aktifin'}</button>
+          <button class="btn btn-sm btn-danger" onclick="deleteDomain(${d.id}, '${d.domain_name.replace(/'/g, "\\'")}')"><i class="fas fa-trash"></i></button>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function editDomain(d) {
+  document.getElementById('editDomainId').value = d.id;
+  document.getElementById('domainName').value = d.domain_name;
+  document.getElementById('domainName').disabled = true;
+  document.getElementById('domainZoneId').value = d.cloudflare_zone_id;
+  document.getElementById('domainApiToken').value = d.cloudflare_api_token;
+  document.getElementById('domainPriceCoins').value = d.price_coins || 0;
+  document.getElementById('domainSortOrder').value = d.sort_order || 0;
+  document.getElementById('domainFormTitle').textContent = '✏️ EDIT DOMAIN';
+  document.getElementById('saveDomainBtn').innerHTML = '<i class="fas fa-save"></i> Update Domain';
+  document.getElementById('cancelEditDomainBtn').style.display = 'block';
+  document.getElementById('tab-domains').scrollIntoView({ behavior: 'smooth' });
+}
+
+function cancelEditDomain() {
+  document.getElementById('editDomainId').value = '';
+  document.getElementById('domainName').value = '';
+  document.getElementById('domainName').disabled = false;
+  document.getElementById('domainZoneId').value = '';
+  document.getElementById('domainApiToken').value = '';
+  document.getElementById('domainPriceCoins').value = '0';
+  document.getElementById('domainSortOrder').value = '0';
+  document.getElementById('domainFormTitle').textContent = '➕ TAMBAH DOMAIN BARU';
+  document.getElementById('saveDomainBtn').innerHTML = '<i class="fas fa-plus"></i> Tambah Domain';
+  document.getElementById('cancelEditDomainBtn').style.display = 'none';
+}
+
+async function saveDomain() {
+  const editId = document.getElementById('editDomainId').value;
+  const domainName = document.getElementById('domainName').value.trim();
+  const cloudflareZoneId = document.getElementById('domainZoneId').value.trim();
+  const cloudflareApiToken = document.getElementById('domainApiToken').value.trim();
+  const priceCoins = document.getElementById('domainPriceCoins').value;
+  const sortOrder = document.getElementById('domainSortOrder').value;
+
+  if (!cloudflareZoneId || !cloudflareApiToken || (!editId && !domainName)) {
+    showToast('❌ Nama domain, Zone ID, dan API token wajib diisi', 'error');
+    return;
+  }
+
+  const btn = document.getElementById('saveDomainBtn');
+  btn.disabled = true;
+  try {
+    const body = editId
+      ? JSON.stringify({ cloudflareZoneId, cloudflareApiToken, priceCoins, sortOrder })
+      : JSON.stringify({ domainName, cloudflareZoneId, cloudflareApiToken, priceCoins, sortOrder });
+
+    const res = await fetch(editId ? '/api/admin/domains/' + editId : '/api/admin/domains', {
+      method: editId ? 'PATCH' : 'POST',
+      headers: { 'Content-Type': 'application/json' }, credentials: 'include', body
+    });
+    const data = await res.json();
+    if (!data.success) { showToast('❌ ' + data.message, 'error'); return; }
+    showToast(editId ? '✅ Domain diupdate!' : '✅ Domain ditambahkan!', 'success');
+    cancelEditDomain();
+    loadDomainsAdmin();
+  } catch (e) { showToast('❌ Gagal simpan domain', 'error'); }
+  finally { btn.disabled = false; }
+}
+
+async function toggleDomain(id, newActive) {
+  try {
+    await fetch('/api/admin/domains/' + id, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+      body: JSON.stringify({ active: newActive })
+    });
+    loadDomainsAdmin();
+  } catch (e) { showToast('❌ Gagal update domain', 'error'); }
+}
+
+async function deleteDomain(id, name) {
+  if (!confirm(`Hapus domain "${name}"? Subdomain yang udah pernah diklaim pakai domain ini gak akan kehapus otomatis dari Cloudflare.`)) return;
+  try {
+    await fetch('/api/admin/domains/' + id, { method: 'DELETE', credentials: 'include' });
+    showToast('✅ Domain dihapus', 'success');
+    loadDomainsAdmin();
+  } catch (e) { showToast('❌ Gagal hapus domain', 'error'); }
 }
 
 // ============================================================
