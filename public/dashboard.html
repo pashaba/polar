@@ -105,7 +105,16 @@
   <a href="#" class="nav-link" onclick="navTo('status'); toggleMenu();" data-tut="nav-status"><i class="fas fa-server"></i> <span data-i18n="nav_status">STATUS</span></a>
   <a href="#" class="nav-link" onclick="navTo('claim'); toggleMenu();" data-tut="nav-claim"><i class="fas fa-download"></i> <span data-i18n="nav_claim">CLAIM</span></a>
   <a href="#" class="nav-link" onclick="navTo('sessions'); toggleMenu();" data-tut="nav-sessions"><i class="fas fa-robot"></i> <span data-i18n="nav_sessions">SESSIONS</span></a>
-  <a href="#" class="nav-link" onclick="navTo('subdomain'); toggleMenu();" data-tut="nav-subdomain"><i class="fas fa-globe"></i> <span data-i18n="nav_subdomain">SUBDOMAIN</span></a>
+
+  <a href="#" class="nav-link nav-category" onclick="toggleServiceMenu()" id="serviceMenuToggle" data-tut="nav-layanan">
+    <i class="fas fa-layer-group"></i> <span data-i18n="nav_services">LAYANAN</span>
+    <i class="fas fa-chevron-down nav-category-arrow" id="serviceMenuArrow" style="margin-left:auto;"></i>
+  </a>
+  <div class="nav-submenu" id="serviceMenu">
+    <a href="#" class="nav-link nav-sublink" onclick="navTo('subdomain'); toggleMenu();" data-tut="nav-subdomain"><i class="fas fa-globe"></i> <span data-i18n="nav_subdomain">SUBDOMAIN</span></a>
+    <a href="#" class="nav-link nav-sublink" onclick="navTo('namegen'); toggleMenu();" data-tut="nav-namegen"><i class="fas fa-shuffle"></i> <span data-i18n="nav_namegen">NAME GENERATOR</span></a>
+  </div>
+
   <a href="/store" target="_blank" class="nav-link"><i class="fas fa-store"></i> <span data-i18n="nav_shop">SHOP</span></a>
   <a href="#" class="nav-link" onclick="toggleMenu(); setTimeout(startTutorial, 350);"><i class="fas fa-circle-question"></i> <span data-i18n="nav_tutorial">MULAI TUTORIAL</span></a>
 
@@ -264,6 +273,28 @@
 
     <div class="section-title" data-i18n="subdomain_list_title">🌐 SUBDOMAIN SAYA</div>
     <div id="subdomainList"></div>
+  </div>
+
+  <!-- NAME GENERATOR -->
+  <div id="sec-namegen" class="section">
+    <div style="text-align:center;margin-bottom:16px;">
+      <div class="slot-badge"><i class="fas fa-shuffle"></i> <span data-i18n="namegen_badge">GRATIS</span></div>
+      <h1 style="font-weight:900;font-size:clamp(26px,6vw,36px);text-transform:uppercase;"><span data-i18n="namegen_title_1">NAME</span> <span style="background:var(--orange);color:#fff;padding:0 12px;transform:skew(-6deg);display:inline-block;border:var(--border-thick);box-shadow:var(--shadow-light);" data-i18n="namegen_title_2">GENERATOR</span></h1>
+      <p style="color:var(--text-muted);font-size:13px;font-weight:500;" data-i18n="namegen_desc">Generate nama orang Indonesia acak, gratis tanpa potong coin</p>
+    </div>
+
+    <div class="card">
+      <div style="margin-bottom:10px;">
+        <label style="font-size:11px;font-weight:800;color:var(--text-muted);display:block;margin-bottom:4px;text-transform:uppercase;" data-i18n="namegen_count_label">Jumlah Nama</label>
+        <input type="number" id="namegenCountInput" value="5" min="1" max="20" style="width:100%;padding:12px;background:#f0f0f0;border:var(--border-thick);box-shadow:inset 2px 2px 0px 0px #111;color:#111;font-size:14px;font-weight:600;">
+      </div>
+      <button class="btn btn-orange btn-full" id="namegenBtn" onclick="generateNames()"><i class="fas fa-shuffle"></i> <span data-i18n="namegen_btn">GENERATE NAMA</span></button>
+    </div>
+
+    <div class="card" id="namegenResultCard" style="display:none;">
+      <div class="section-title" data-i18n="namegen_result_title">📋 HASIL</div>
+      <div id="namegenResultList"></div>
+    </div>
   </div>
 
   <!-- HISTORY -->
