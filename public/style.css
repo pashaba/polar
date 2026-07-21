@@ -272,6 +272,15 @@ body {
 }
 .nav-link:hover { transform:translate(2px,2px); box-shadow:2px 2px 0px 0px #111; background:var(--orange); color:#fff; }
 
+.nav-category-arrow { font-size:11px; transition:var(--transition); }
+.nav-category.open .nav-category-arrow { transform:rotate(180deg); }
+.nav-submenu {
+    display:none; flex-direction:column; gap:6px; margin:2px 0 0 14px; padding-left:10px;
+    border-left:3px dashed var(--text-muted);
+}
+.nav-submenu.active { display:flex; }
+.nav-sublink { font-size:12px; padding:8px 12px; }
+
 /* ===== MAIN ===== */
 .main-container { padding:20px 16px; max-width:700px; margin:0 auto; }
 .section { display:none; animation:fadeInUp .4s ease; }
