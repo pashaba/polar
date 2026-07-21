@@ -46,6 +46,7 @@ const POLAR_I18N = {
     nav_status: 'STATUS',
     nav_claim: 'CLAIM',
     nav_sessions: 'SESSIONS',
+    nav_subdomain: 'SUBDOMAIN',
     nav_shop: 'TOKO',
     nav_profile: 'PROFILE',
     nav_history: 'RIWAYAT KOIN',
@@ -100,6 +101,22 @@ const POLAR_I18N = {
     sessions_empty_title: 'Belum Ada Bot',
     sessions_empty_desc: 'Claim server dulu untuk mulai menggunakan bot',
     sessions_btn_claim: 'CLAIM SEKARANG',
+
+    // ===== Subdomain =====
+    subdomain_badge: 'SUBDOMAIN GRATIS',
+    subdomain_title_1: 'KELOLA',
+    subdomain_title_2: 'SUBDOMAIN',
+    subdomain_desc: 'Klaim subdomain buat server kamu pakai Polar Coin',
+    subdomain_domain_label: 'Pilih Domain',
+    subdomain_domain_loading: 'Memuat domain...',
+    subdomain_name_label: 'Nama Subdomain',
+    subdomain_name_placeholder: 'contoh: server1',
+    subdomain_ip_label: 'IP Address Tujuan',
+    subdomain_price_label: 'Harga',
+    subdomain_claim_btn: 'KLAIM SUBDOMAIN',
+    subdomain_list_title: '🌐 SUBDOMAIN SAYA',
+    subdomain_empty_title: 'Belum Ada Subdomain',
+    subdomain_empty_desc: 'Klaim subdomain gratis pakai form di atas',
 
     // ===== Event =====
     event_badge: 'INFO TERBARU',
@@ -216,6 +233,7 @@ const POLAR_I18N = {
     nav_status: 'STATUS',
     nav_claim: 'CLAIM',
     nav_sessions: 'SESSIONS',
+    nav_subdomain: 'SUBDOMAIN',
     nav_shop: 'SHOP',
     nav_profile: 'PROFILE',
     nav_history: 'COIN HISTORY',
@@ -270,6 +288,22 @@ const POLAR_I18N = {
     sessions_empty_title: 'No Bots Yet',
     sessions_empty_desc: 'Claim a server first to start using a bot',
     sessions_btn_claim: 'CLAIM NOW',
+
+    // ===== Subdomain =====
+    subdomain_badge: 'FREE SUBDOMAIN',
+    subdomain_title_1: 'MANAGE',
+    subdomain_title_2: 'SUBDOMAIN',
+    subdomain_desc: 'Claim a subdomain for your server using Polar Coin',
+    subdomain_domain_label: 'Choose Domain',
+    subdomain_domain_loading: 'Loading domains...',
+    subdomain_name_label: 'Subdomain Name',
+    subdomain_name_placeholder: 'e.g. server1',
+    subdomain_ip_label: 'Target IP Address',
+    subdomain_price_label: 'Price',
+    subdomain_claim_btn: 'CLAIM SUBDOMAIN',
+    subdomain_list_title: '🌐 MY SUBDOMAINS',
+    subdomain_empty_title: 'No Subdomains Yet',
+    subdomain_empty_desc: 'Claim a free subdomain using the form above',
 
     // ===== Event =====
     event_badge: 'LATEST NEWS',
