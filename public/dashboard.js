@@ -342,6 +342,14 @@ function toggleMenu() {
   document.getElementById('sidebarOverlay').classList.toggle('active');
 }
 
+function toggleServiceMenu(forceOpen) {
+  const menu = document.getElementById('serviceMenu');
+  const toggle = document.getElementById('serviceMenuToggle');
+  const shouldOpen = forceOpen !== undefined ? forceOpen : !menu.classList.contains('active');
+  menu.classList.toggle('active', shouldOpen);
+  toggle.classList.toggle('open', shouldOpen);
+}
+
 // ============================================================
 // DARK MODE
 // ============================================================
@@ -368,6 +376,7 @@ applyThemeIcon();
 function navTo(sectionId) {
   document.querySelectorAll('.section').forEach(sec => sec.classList.remove('active'));
   document.getElementById('sec-' + sectionId).classList.add('active');
+  if (sectionId === 'subdomain' || sectionId === 'namegen') toggleServiceMenu(true);
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
@@ -728,6 +737,51 @@ async function deleteSubdomain(id, fullName) {
   } catch (e) {
     showToast('❌ ' + e.message, 'error');
   }
+}
+
+// ============================================================
+// LAYANAN — NAME GENERATOR
+// ============================================================
+async function generateNames() {
+  const countInput = document.getElementById('namegenCountInput');
+  let count = Number(countInput.value) || 5;
+  count = Math.min(Math.max(count, 1), 20);
+  countInput.value = count;
+
+  const btn = document.getElementById('namegenBtn');
+  btn.disabled = true;
+
+  try {
+    const res = await fetch(`/api/tools/name-generator?count=${count}`, { credentials: 'include' });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.message || 'Gagal generate nama');
+    renderNamegenResults(data.names);
+  } catch (e) {
+    showToast('❌ ' + e.message, 'error');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function renderNamegenResults(names) {
+  const card = document.getElementById('namegenResultCard');
+  const list = document.getElementById('namegenResultList');
+  card.style.display = 'block';
+
+  list.innerHTML = names.map(name => `
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:2px dashed #ccc;">
+      <span style="font-weight:700;font-size:14px;">${name}</span>
+      <button class="btn btn-sm btn-white" onclick="copyNamegenResult(this, '${String(name).replace(/'/g, "\\'")}')"><i class="fas fa-copy"></i></button>
+    </div>
+  `).join('');
+}
+
+function copyNamegenResult(btn, name) {
+  navigator.clipboard.writeText(name).then(() => {
+    showToast(`✅ "${name}" disalin!`, 'success');
+  }).catch(() => {
+    showToast('❌ Gagal menyalin, coba manual', 'error');
+  });
 }
 
 // ============================================================
