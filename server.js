@@ -6,6 +6,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const path = require('path');
 const fs = require('fs');
+const indoNameGenerator = require('indo-name-generator');
 
 const app = express();
 app.use(express.json());
@@ -1419,6 +1420,24 @@ app.delete('/api/admin/domains/:id', authMiddleware, adminMiddleware, async (req
     res.json({ success: true });
   } catch (e) {
     res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+// ============================================================
+// LAYANAN — NAME GENERATOR (npm: indo-name-generator)
+// Fitur ringan, gratis (gak potong coin), cuma butuh login biar konsisten
+// sama fitur "Layanan" lainnya.
+// ============================================================
+app.get('/api/tools/name-generator', authMiddleware, (req, res) => {
+  try {
+    const count = Math.min(Math.max(Number(req.query.count) || 1, 1), 20); // max 20 sekali generate, biar gak disalahgunain
+    const names = [];
+    for (let i = 0; i < count; i++) {
+      names.push(indoNameGenerator.generate());
+    }
+    res.json({ success: true, names });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message || 'Gagal generate nama' });
   }
 });
 
