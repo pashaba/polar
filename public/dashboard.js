@@ -275,6 +275,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   loadCoinHistory();
   loadEvents();
   loadReferral();
+  loadDomains();
+  loadSubdomains();
   checkEarnCoinReturn();
   maybeShowChannelPopup();
   setInterval(loadMe, 30000);
@@ -592,6 +594,137 @@ async function deleteSession(id, phone) {
     if (!data.success) throw new Error(data.message || 'Gagal hapus session');
     showToast('✅ Session dihapus', 'success');
     await loadSessions();
+  } catch (e) {
+    showToast('❌ ' + e.message, 'error');
+  }
+}
+
+// ============================================================
+// SUBDOMAIN GRATIS
+// ============================================================
+let currentDomains = [];
+
+async function loadDomains() {
+  try {
+    const res = await fetch('/api/domains', { credentials: 'include' });
+    const data = await res.json();
+    if (!data.success) return;
+    currentDomains = data.domains;
+    renderDomainSelect();
+  } catch (e) {
+    console.error(e);
+  }
+}
+
+function renderDomainSelect() {
+  const select = document.getElementById('subdomainDomainSelect');
+  if (!select) return;
+
+  if (!currentDomains || currentDomains.length === 0) {
+    select.innerHTML = `<option value="">Belum ada domain tersedia</option>`;
+    document.getElementById('subdomainSuffixLabel').textContent = '';
+    document.getElementById('subdomainPriceDisplay').textContent = '0';
+    return;
+  }
+
+  select.innerHTML = currentDomains.map(d => `<option value="${d.id}">${d.domain_name}</option>`).join('');
+  updateSubdomainPreview();
+}
+
+function updateSubdomainPreview() {
+  const select = document.getElementById('subdomainDomainSelect');
+  const domain = currentDomains.find(d => String(d.id) === select.value);
+  document.getElementById('subdomainSuffixLabel').textContent = domain ? `.${domain.domain_name}` : '';
+  document.getElementById('subdomainPriceDisplay').textContent = domain ? domain.price_coins : '0';
+}
+
+async function loadSubdomains() {
+  try {
+    const res = await fetch('/api/subdomains', { credentials: 'include' });
+    const data = await res.json();
+    if (!data.success) return;
+    renderSubdomains(data.subdomains);
+  } catch (e) {
+    console.error(e);
+  }
+}
+
+function renderSubdomains(subdomains) {
+  const list = document.getElementById('subdomainList');
+  if (!list) return;
+
+  if (!subdomains || subdomains.length === 0) {
+    list.innerHTML = `
+      <div class="card" style="text-align:center;padding:40px 16px;">
+        <div style="font-size:48px;margin-bottom:12px;opacity:.3;">🌐</div>
+        <h3 style="font-weight:900;font-size:20px;">Belum Ada Subdomain</h3>
+        <p style="color:var(--text-muted);font-size:13px;font-weight:500;margin-top:4px;">Klaim subdomain gratis pakai form di atas</p>
+      </div>`;
+    return;
+  }
+
+  list.innerHTML = subdomains.map(s => {
+    const domainName = s.polar_domains ? s.polar_domains.domain_name : '';
+    const fullName = `${s.subdomain}.${domainName}`;
+    return `
+      <div class="card">
+        <div class="session-item">
+          <div>
+            <div class="session-phone"><i class="fas fa-globe"></i> ${fullName}</div>
+            <div style="font-size:9px;font-weight:700;color:var(--text-muted);margin-top:2px;">→ ${s.ip_address}</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:4px;">
+          <button class="btn btn-sm btn-danger" onclick="deleteSubdomain(${s.id}, '${fullName}')"><i class="fas fa-trash"></i> Hapus</button>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+async function claimSubdomain() {
+  const domainId = document.getElementById('subdomainDomainSelect').value;
+  const subdomain = document.getElementById('subdomainNameInput').value.trim();
+  const ip = document.getElementById('subdomainIpInput').value.trim();
+
+  if (!domainId) { showToast('🌐 Pilih domain dulu', 'error'); return; }
+  if (!subdomain) { showToast('🌐 Masukkan nama subdomain', 'error'); return; }
+  if (!ip) { showToast('🌐 Masukkan IP tujuan', 'error'); return; }
+
+  const btn = document.getElementById('subdomainClaimBtn');
+  btn.disabled = true;
+
+  try {
+    const res = await fetch('/api/subdomains', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ domainId, subdomain, ip })
+    });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.message || 'Gagal klaim subdomain');
+
+    currentUser.coins = data.coins;
+    renderUser();
+    showToast(`✅ Subdomain ${data.fullName} berhasil diklaim! 🎉`, 'success');
+    document.getElementById('subdomainNameInput').value = '';
+    document.getElementById('subdomainIpInput').value = '';
+    await loadSubdomains();
+    loadCoinHistory();
+  } catch (e) {
+    showToast('❌ ' + e.message, 'error');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function deleteSubdomain(id, fullName) {
+  if (!confirm(`Hapus subdomain ${fullName}? Coin yang udah dipakai gak akan dikembalikan.`)) return;
+  try {
+    const res = await fetch(`/api/subdomains/${id}`, { method: 'DELETE', credentials: 'include' });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.message || 'Gagal hapus subdomain');
+    showToast('✅ Subdomain dihapus', 'success');
+    await loadSubdomains();
   } catch (e) {
     showToast('❌ ' + e.message, 'error');
   }
