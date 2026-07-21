@@ -1199,6 +1199,230 @@ async function getScriptStatus(script) {
 }
 
 // ============================================================
+// SUBDOMAIN GRATIS (Cloudflare DNS A record)
+// Domain + credential Cloudflare dikelola admin lewat tabel polar_domains.
+// Claim & hapus subdomain motong/gak-ngerefund coin — lihat aturan di CLAUDE.md.
+// ============================================================
+
+const RESERVED_SUBDOMAINS = [
+  'www', 'admin', 'api', 'mail', 'ftp', 'ns1', 'ns2', 'ns3', 'cpanel', 'webmail',
+  'cdn', 'store', 'dashboard', 'login', 'blog', 'docs', 'status', 'security',
+  'app', 'staging', 'dev', 'test', 'smtp', 'pop', 'imap', 'autodiscover',
+  'panel', 'host', 'server', 'vpn', 'ssh', 'root', 'polar', 'support'
+];
+
+// Label subdomain: huruf kecil/angka/strip, gak boleh diawali/diakhiri strip, max 63 karakter
+function isValidSubdomainLabel(label) {
+  return /^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$/.test(label);
+}
+
+function isValidIPv4(ip) {
+  if (!/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(ip)) return false;
+  return ip.split('.').every(octet => Number(octet) >= 0 && Number(octet) <= 255);
+}
+
+async function cfCreateRecord(domainRow, fullName, ip) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 8000);
+  try {
+    const r = await fetch(`https://api.cloudflare.com/client/v4/zones/${domainRow.cloudflare_zone_id}/dns_records`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${domainRow.cloudflare_api_token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ type: 'A', name: fullName, content: ip, ttl: 1, proxied: false }),
+      signal: controller.signal
+    });
+    clearTimeout(timeoutId);
+    const data = await r.json();
+    if (!data.success) {
+      const msg = (data.errors && data.errors[0] && data.errors[0].message) || 'Gagal bikin DNS record di Cloudflare';
+      throw new Error(msg);
+    }
+    return data.result.id;
+  } catch (e) {
+    clearTimeout(timeoutId);
+    throw e;
+  }
+}
+
+async function cfDeleteRecord(domainRow, recordId) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 8000);
+  try {
+    await fetch(`https://api.cloudflare.com/client/v4/zones/${domainRow.cloudflare_zone_id}/dns_records/${recordId}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${domainRow.cloudflare_api_token}` },
+      signal: controller.signal
+    });
+  } catch (e) {
+    console.error('Gagal hapus DNS record di Cloudflare (record mungkin udah gak ada):', e.message);
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+// Daftar domain aktif buat form claim user — cuma field aman
+app.get('/api/domains', authMiddleware, async (req, res) => {
+  try {
+    const rows = await sb('GET', 'polar_domains?active=eq.true&order=sort_order.asc&select=id,domain_name,price_coins');
+    res.json({ success: true, domains: rows });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+// Subdomain punya user yang lagi login
+app.get('/api/subdomains', authMiddleware, async (req, res) => {
+  try {
+    const rows = await sb('GET', `polar_subdomains?user_id=eq.${req.user.uid}&order=created_at.desc&select=*,polar_domains(domain_name)`);
+    res.json({ success: true, subdomains: rows });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+app.post('/api/subdomains', authMiddleware, async (req, res) => {
+  try {
+    const { domainId, subdomain, ip } = req.body;
+    if (!domainId || !subdomain || !ip) {
+      return res.status(400).json({ success: false, message: 'Domain, nama subdomain, dan IP wajib diisi' });
+    }
+
+    const normalizedSub = String(subdomain).trim().toLowerCase();
+    if (!isValidSubdomainLabel(normalizedSub)) {
+      return res.status(400).json({ success: false, message: 'Nama subdomain gak valid. Cuma huruf kecil, angka, strip — gak boleh diawali/diakhiri strip.' });
+    }
+    if (RESERVED_SUBDOMAINS.includes(normalizedSub)) {
+      return res.status(400).json({ success: false, message: 'Nama subdomain ini dipakai sistem, coba nama lain.' });
+    }
+    if (!isValidIPv4(ip)) {
+      return res.status(400).json({ success: false, message: 'Format IP gak valid' });
+    }
+
+    const domainRows = await sb('GET', `polar_domains?id=eq.${domainId}&active=eq.true&select=*`);
+    const domainRow = domainRows[0];
+    if (!domainRow) {
+      return res.status(400).json({ success: false, message: 'Domain gak ditemukan atau lagi nonaktif' });
+    }
+
+    const existing = await sb('GET', `polar_subdomains?domain_id=eq.${domainId}&subdomain=eq.${encodeURIComponent(normalizedSub)}&select=id`);
+    if (existing.length > 0) {
+      return res.status(409).json({ success: false, message: 'Nama subdomain ini udah dipakai orang lain, coba nama lain.' });
+    }
+
+    const user = await getUserById(req.user.uid);
+    const price = Number(domainRow.price_coins) || 0;
+    if ((user.coins || 0) < price) {
+      return res.status(400).json({ success: false, message: 'Polar Coin tidak cukup' });
+    }
+
+    const fullName = `${normalizedSub}.${domainRow.domain_name}`;
+    const cfRecordId = await cfCreateRecord(domainRow, fullName, ip);
+
+    await sb('PATCH', `polar_users?id=eq.${user.id}`, { coins: user.coins - price });
+    await logCoinTransaction(user.id, -price, `claim_subdomain:${fullName}`, user.coins - price);
+
+    const [row] = await sb('POST', 'polar_subdomains', {
+      user_id: user.id,
+      domain_id: domainRow.id,
+      subdomain: normalizedSub,
+      ip_address: ip,
+      cf_record_id: cfRecordId,
+      created_at: Date.now()
+    });
+
+    res.json({ success: true, subdomain: row, fullName, coins: user.coins - price });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message || 'Gagal claim subdomain' });
+  }
+});
+
+app.delete('/api/subdomains/:id', authMiddleware, async (req, res) => {
+  try {
+    const rows = await sb('GET', `polar_subdomains?id=eq.${req.params.id}&user_id=eq.${req.user.uid}&select=*,polar_domains(*)`);
+    const row = rows[0];
+    if (!row) return res.status(404).json({ success: false, message: 'Subdomain gak ditemukan' });
+
+    if (row.polar_domains) {
+      await cfDeleteRecord(row.polar_domains, row.cf_record_id);
+    }
+    await sb('DELETE', `polar_subdomains?id=eq.${req.params.id}&user_id=eq.${req.user.uid}`);
+    res.json({ success: true });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+// ============================================================
+// ADMIN — kelola domain (buat fitur subdomain gratis)
+// ============================================================
+app.get('/api/admin/domains', authMiddleware, adminMiddleware, async (req, res) => {
+  try {
+    const rows = await sb('GET', 'polar_domains?order=sort_order.asc');
+    res.json({ success: true, domains: rows });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+app.post('/api/admin/domains', authMiddleware, adminMiddleware, async (req, res) => {
+  try {
+    const { domainName, cloudflareZoneId, cloudflareApiToken, priceCoins, sortOrder } = req.body;
+    if (!domainName || !cloudflareZoneId || !cloudflareApiToken) {
+      return res.status(400).json({ success: false, message: 'Nama domain, Zone ID, dan API token wajib diisi' });
+    }
+
+    const normalizedDomain = domainName.trim().toLowerCase();
+    const existing = await sb('GET', `polar_domains?domain_name=eq.${encodeURIComponent(normalizedDomain)}&select=id`);
+    if (existing.length > 0) {
+      return res.status(409).json({ success: false, message: 'Domain ini udah terdaftar' });
+    }
+
+    const [created] = await sb('POST', 'polar_domains', {
+      domain_name: normalizedDomain,
+      cloudflare_zone_id: cloudflareZoneId.trim(),
+      cloudflare_api_token: cloudflareApiToken.trim(),
+      price_coins: Number(priceCoins) || 0,
+      active: true,
+      sort_order: Number(sortOrder) || 0,
+      created_at: Date.now()
+    });
+
+    res.json({ success: true, domain: created });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+app.patch('/api/admin/domains/:id', authMiddleware, adminMiddleware, async (req, res) => {
+  try {
+    const { cloudflareZoneId, cloudflareApiToken, priceCoins, active, sortOrder } = req.body;
+    const patch = {};
+    if (cloudflareZoneId !== undefined) patch.cloudflare_zone_id = cloudflareZoneId;
+    if (cloudflareApiToken !== undefined) patch.cloudflare_api_token = cloudflareApiToken;
+    if (priceCoins !== undefined) patch.price_coins = Number(priceCoins) || 0;
+    if (active !== undefined) patch.active = !!active;
+    if (sortOrder !== undefined) patch.sort_order = Number(sortOrder) || 0;
+
+    await sb('PATCH', `polar_domains?id=eq.${req.params.id}`, patch);
+    res.json({ success: true });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+app.delete('/api/admin/domains/:id', authMiddleware, adminMiddleware, async (req, res) => {
+  try {
+    await sb('DELETE', `polar_domains?id=eq.${req.params.id}`);
+    res.json({ success: true });
+  } catch (e) {
+    res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+// ============================================================
 // 404 — taruh paling bawah, nangkep semua route yang gak ke-match di atas
 // ============================================================
 app.use((req, res) => {
