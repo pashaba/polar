@@ -105,6 +105,7 @@
   <a href="#" class="nav-link" onclick="navTo('status'); toggleMenu();" data-tut="nav-status"><i class="fas fa-server"></i> <span data-i18n="nav_status">STATUS</span></a>
   <a href="#" class="nav-link" onclick="navTo('claim'); toggleMenu();" data-tut="nav-claim"><i class="fas fa-download"></i> <span data-i18n="nav_claim">CLAIM</span></a>
   <a href="#" class="nav-link" onclick="navTo('sessions'); toggleMenu();" data-tut="nav-sessions"><i class="fas fa-robot"></i> <span data-i18n="nav_sessions">SESSIONS</span></a>
+  <a href="#" class="nav-link" onclick="navTo('subdomain'); toggleMenu();" data-tut="nav-subdomain"><i class="fas fa-globe"></i> <span data-i18n="nav_subdomain">SUBDOMAIN</span></a>
   <a href="/store" target="_blank" class="nav-link"><i class="fas fa-store"></i> <span data-i18n="nav_shop">SHOP</span></a>
   <a href="#" class="nav-link" onclick="toggleMenu(); setTimeout(startTutorial, 350);"><i class="fas fa-circle-question"></i> <span data-i18n="nav_tutorial">MULAI TUTORIAL</span></a>
 
@@ -226,6 +227,43 @@
       <h1 style="font-weight:900;font-size:clamp(26px,6vw,36px);text-transform:uppercase;"><span data-i18n="sessions_title_1">MY</span> <span style="background:var(--orange);color:#fff;padding:0 12px;transform:skew(-6deg);display:inline-block;border:var(--border-thick);box-shadow:var(--shadow-light);" data-i18n="sessions_title_2">BOTS</span></h1>
     </div>
     <div id="sessionsList"></div>
+  </div>
+
+  <!-- SUBDOMAIN -->
+  <div id="sec-subdomain" class="section">
+    <div style="text-align:center;margin-bottom:16px;">
+      <div class="slot-badge"><i class="fas fa-globe"></i> <span data-i18n="subdomain_badge">SUBDOMAIN GRATIS</span></div>
+      <h1 style="font-weight:900;font-size:clamp(26px,6vw,36px);text-transform:uppercase;"><span data-i18n="subdomain_title_1">KELOLA</span> <span style="background:var(--orange);color:#fff;padding:0 12px;transform:skew(-6deg);display:inline-block;border:var(--border-thick);box-shadow:var(--shadow-light);" data-i18n="subdomain_title_2">SUBDOMAIN</span></h1>
+      <p style="color:var(--text-muted);font-size:13px;font-weight:500;" data-i18n="subdomain_desc">Klaim subdomain buat server kamu pakai Polar Coin</p>
+    </div>
+
+    <div class="card">
+      <div style="margin-bottom:10px;">
+        <label style="font-size:11px;font-weight:800;color:var(--text-muted);display:block;margin-bottom:4px;text-transform:uppercase;" data-i18n="subdomain_domain_label">Pilih Domain</label>
+        <select id="subdomainDomainSelect" onchange="updateSubdomainPreview()" style="width:100%;padding:12px;background:#f0f0f0;border:var(--border-thick);box-shadow:inset 2px 2px 0px 0px #111;color:#111;font-size:14px;font-weight:600;">
+          <option value="" data-i18n="subdomain_domain_loading">Memuat domain...</option>
+        </select>
+      </div>
+      <div style="margin-bottom:10px;">
+        <label style="font-size:11px;font-weight:800;color:var(--text-muted);display:block;margin-bottom:4px;text-transform:uppercase;" data-i18n="subdomain_name_label">Nama Subdomain</label>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <input type="text" id="subdomainNameInput" placeholder="contoh: server1" data-i18n-placeholder="subdomain_name_placeholder" style="flex:1;min-width:0;padding:12px;background:#f0f0f0;border:var(--border-thick);box-shadow:inset 2px 2px 0px 0px #111;color:#111;font-size:14px;font-weight:600;">
+          <span id="subdomainSuffixLabel" style="font-weight:800;font-size:13px;color:var(--text-muted);white-space:nowrap;"></span>
+        </div>
+      </div>
+      <div style="margin-bottom:10px;">
+        <label style="font-size:11px;font-weight:800;color:var(--text-muted);display:block;margin-bottom:4px;text-transform:uppercase;" data-i18n="subdomain_ip_label">IP Address Tujuan</label>
+        <input type="text" id="subdomainIpInput" placeholder="123.45.67.89" style="width:100%;padding:12px;background:#f0f0f0;border:var(--border-thick);box-shadow:inset 2px 2px 0px 0px #111;color:#111;font-size:14px;font-weight:600;">
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+        <span style="font-size:12px;font-weight:700;color:var(--text-muted);" data-i18n="subdomain_price_label">Harga</span>
+        <span style="font-weight:900;font-size:14px;"><i class="fas fa-coins"></i> <span id="subdomainPriceDisplay">0</span></span>
+      </div>
+      <button class="btn btn-orange btn-full" id="subdomainClaimBtn" onclick="claimSubdomain()"><i class="fas fa-globe"></i> <span data-i18n="subdomain_claim_btn">KLAIM SUBDOMAIN</span></button>
+    </div>
+
+    <div class="section-title" data-i18n="subdomain_list_title">🌐 SUBDOMAIN SAYA</div>
+    <div id="subdomainList"></div>
   </div>
 
   <!-- HISTORY -->
