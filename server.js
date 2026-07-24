@@ -1208,7 +1208,7 @@ async function getScriptStatus(script) {
 }
 
 // ============================================================
-// SUBDOMAIN GRATIS (Cloudflare DNS A record)
+// SUBDOMAIN GRATIS (Cloudflare DNS record — A/AAAA/CNAME/TXT/MX)
 // Domain + credential Cloudflare dikelola admin lewat tabel polar_domains.
 // Claim & hapus subdomain motong/gak-ngerefund coin — lihat aturan di CLAUDE.md.
 // ============================================================
@@ -1220,6 +1220,8 @@ const RESERVED_SUBDOMAINS = [
   'panel', 'host', 'server', 'vpn', 'ssh', 'root', 'polar', 'support'
 ];
 
+const RECORD_TYPES = ['A', 'AAAA', 'CNAME', 'TXT', 'MX'];
+
 // Label subdomain: huruf kecil/angka/strip, gak boleh diawali/diakhiri strip, max 63 karakter
 function isValidSubdomainLabel(label) {
   return /^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$/.test(label);
@@ -1230,17 +1232,44 @@ function isValidIPv4(ip) {
   return ip.split('.').every(octet => Number(octet) >= 0 && Number(octet) <= 255);
 }
 
-async function cfCreateRecord(domainRow, fullName, ip) {
+function isValidIPv6(ip) {
+  return /^([0-9a-fA-F]{0,4}:){2,7}[0-9a-fA-F]{0,4}$/.test(ip) && ip.includes(':');
+}
+
+// Buat CNAME/MX — hostname tujuan (boleh subdomain org lain / domain luar)
+function isValidHostname(host) {
+  return /^(?!-)[a-zA-Z0-9-]{1,63}(?<!-)(\.[a-zA-Z0-9-]{1,63})+$/.test(host) && host.length <= 253;
+}
+
+// Validasi "content" record sesuai tipenya, balikin pesan error atau null kalau valid
+function validateRecordContent(type, content) {
+  if (!content || !String(content).trim()) return 'Isi record gak boleh kosong';
+  const val = String(content).trim();
+  if (type === 'A') return isValidIPv4(val) ? null : 'Format IPv4 gak valid';
+  if (type === 'AAAA') return isValidIPv6(val) ? null : 'Format IPv6 gak valid';
+  if (type === 'CNAME' || type === 'MX') return isValidHostname(val) ? null : 'Format hostname tujuan gak valid (contoh: server.contohdomain.com)';
+  if (type === 'TXT') return val.length <= 255 ? null : 'Isi TXT maksimal 255 karakter';
+  return 'Tipe record gak dikenali';
+}
+
+async function cfCreateRecord(domainRow, fullName, type, content, priority) {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 8000);
   try {
+    const body = { type, name: fullName, content, ttl: 1, proxied: false };
+    if (type === 'MX') {
+      body.priority = Number.isFinite(Number(priority)) ? Number(priority) : 10;
+      delete body.proxied; // MX gak punya opsi proxied di Cloudflare
+    }
+    if (type === 'TXT') delete body.proxied; // TXT juga gak punya opsi proxied
+
     const r = await fetch(`https://api.cloudflare.com/client/v4/zones/${domainRow.cloudflare_zone_id}/dns_records`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${domainRow.cloudflare_api_token}`,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ type: 'A', name: fullName, content: ip, ttl: 1, proxied: false }),
+      body: JSON.stringify(body),
       signal: controller.signal
     });
     clearTimeout(timeoutId);
@@ -1295,9 +1324,14 @@ app.get('/api/subdomains', authMiddleware, async (req, res) => {
 
 app.post('/api/subdomains', authMiddleware, async (req, res) => {
   try {
-    const { domainId, subdomain, ip } = req.body;
-    if (!domainId || !subdomain || !ip) {
-      return res.status(400).json({ success: false, message: 'Domain, nama subdomain, dan IP wajib diisi' });
+    const { domainId, subdomain, recordType, content, priority } = req.body;
+    const type = (recordType || 'A').toUpperCase();
+
+    if (!domainId || !subdomain || !content) {
+      return res.status(400).json({ success: false, message: 'Domain, nama subdomain, dan isi record wajib diisi' });
+    }
+    if (!RECORD_TYPES.includes(type)) {
+      return res.status(400).json({ success: false, message: 'Tipe record gak didukung. Pilih A, AAAA, CNAME, TXT, atau MX.' });
     }
 
     const normalizedSub = String(subdomain).trim().toLowerCase();
@@ -1307,8 +1341,10 @@ app.post('/api/subdomains', authMiddleware, async (req, res) => {
     if (RESERVED_SUBDOMAINS.includes(normalizedSub)) {
       return res.status(400).json({ success: false, message: 'Nama subdomain ini dipakai sistem, coba nama lain.' });
     }
-    if (!isValidIPv4(ip)) {
-      return res.status(400).json({ success: false, message: 'Format IP gak valid' });
+
+    const contentError = validateRecordContent(type, content);
+    if (contentError) {
+      return res.status(400).json({ success: false, message: contentError });
     }
 
     const domainRows = await sb('GET', `polar_domains?id=eq.${domainId}&active=eq.true&select=*`);
@@ -1317,6 +1353,8 @@ app.post('/api/subdomains', authMiddleware, async (req, res) => {
       return res.status(400).json({ success: false, message: 'Domain gak ditemukan atau lagi nonaktif' });
     }
 
+    // Nama subdomain cuma boleh dipakai sekali per domain, terlepas dari tipe record-nya —
+    // biar gak ada rebutan/squatting antar user
     const existing = await sb('GET', `polar_subdomains?domain_id=eq.${domainId}&subdomain=eq.${encodeURIComponent(normalizedSub)}&select=id`);
     if (existing.length > 0) {
       return res.status(409).json({ success: false, message: 'Nama subdomain ini udah dipakai orang lain, coba nama lain.' });
@@ -1329,7 +1367,9 @@ app.post('/api/subdomains', authMiddleware, async (req, res) => {
     }
 
     const fullName = `${normalizedSub}.${domainRow.domain_name}`;
-    const cfRecordId = await cfCreateRecord(domainRow, fullName, ip);
+    const trimmedContent = String(content).trim();
+    const mxPriority = type === 'MX' ? (Number(priority) || 10) : null;
+    const cfRecordId = await cfCreateRecord(domainRow, fullName, type, trimmedContent, mxPriority);
 
     await sb('PATCH', `polar_users?id=eq.${user.id}`, { coins: user.coins - price });
     await logCoinTransaction(user.id, -price, `claim_subdomain:${fullName}`, user.coins - price);
@@ -1338,7 +1378,9 @@ app.post('/api/subdomains', authMiddleware, async (req, res) => {
       user_id: user.id,
       domain_id: domainRow.id,
       subdomain: normalizedSub,
-      ip_address: ip,
+      record_type: type,
+      content: trimmedContent,
+      priority: mxPriority,
       cf_record_id: cfRecordId,
       created_at: Date.now()
     });
