@@ -99,38 +99,52 @@
     </div>
   </div>
 
-  <div class="sidebar-section-label" data-i18n="nav_section_main">Menu Utama</div>
-  <a href="#" class="nav-link" onclick="navTo('home'); toggleMenu();" data-tut="nav-home"><i class="fas fa-home"></i> <span data-i18n="nav_home">HOME</span></a>
-  <a href="#" class="nav-link" onclick="navTo('event'); toggleMenu();" data-tut="nav-event"><i class="fas fa-bullhorn"></i> <span data-i18n="nav_event">EVENT</span></a>
-  <a href="#" class="nav-link" onclick="navTo('status'); toggleMenu();" data-tut="nav-status"><i class="fas fa-server"></i> <span data-i18n="nav_status">STATUS</span></a>
-  <a href="#" class="nav-link" onclick="navTo('claim'); toggleMenu();" data-tut="nav-claim"><i class="fas fa-download"></i> <span data-i18n="nav_claim">CLAIM</span></a>
-  <a href="#" class="nav-link" onclick="navTo('sessions'); toggleMenu();" data-tut="nav-sessions"><i class="fas fa-robot"></i> <span data-i18n="nav_sessions">SESSIONS</span></a>
-
-  <a href="#" class="nav-link nav-category" onclick="toggleServiceMenu()" id="serviceMenuToggle" data-tut="nav-layanan">
-    <i class="fas fa-layer-group"></i> <span data-i18n="nav_services">LAYANAN</span>
-    <i class="fas fa-chevron-down nav-category-arrow" id="serviceMenuArrow" style="margin-left:auto;"></i>
+  <a href="#" class="nav-link nav-category" onclick="toggleNavCategory('navMain')" id="navMainToggle" data-tut="nav-main">
+    <i class="fas fa-house"></i> <span data-i18n="nav_section_main">MENU UTAMA</span>
+    <i class="fas fa-chevron-down nav-category-arrow"></i>
   </a>
-  <div class="nav-submenu" id="serviceMenu">
-    <a href="#" class="nav-link nav-sublink" onclick="navTo('subdomain'); toggleMenu();" data-tut="nav-subdomain"><i class="fas fa-globe"></i> <span data-i18n="nav_subdomain">SUBDOMAIN</span></a>
-    <a href="#" class="nav-link nav-sublink" onclick="navTo('namegen'); toggleMenu();" data-tut="nav-namegen"><i class="fas fa-shuffle"></i> <span data-i18n="nav_namegen">NAME GENERATOR</span></a>
+  <div class="nav-submenu" id="navMain">
+    <a href="#" class="nav-link nav-sublink" onclick="navTo('home'); toggleMenu();" data-tut="nav-home"><i class="fas fa-home"></i> <span data-i18n="nav_home">HOME</span></a>
+    <a href="#" class="nav-link nav-sublink" onclick="navTo('event'); toggleMenu();" data-tut="nav-event"><i class="fas fa-bullhorn"></i> <span data-i18n="nav_event">EVENT</span></a>
+    <a href="#" class="nav-link nav-sublink" onclick="navTo('status'); toggleMenu();" data-tut="nav-status"><i class="fas fa-server"></i> <span data-i18n="nav_status">STATUS</span></a>
+    <a href="#" class="nav-link nav-sublink" onclick="navTo('claim'); toggleMenu();" data-tut="nav-claim"><i class="fas fa-download"></i> <span data-i18n="nav_claim">CLAIM</span></a>
+    <a href="#" class="nav-link nav-sublink" onclick="navTo('sessions'); toggleMenu();" data-tut="nav-sessions"><i class="fas fa-robot"></i> <span data-i18n="nav_sessions">SESSIONS</span></a>
+    <a href="/store" target="_blank" class="nav-link nav-sublink"><i class="fas fa-store"></i> <span data-i18n="nav_shop">SHOP</span></a>
+    <a href="#" class="nav-link nav-sublink" onclick="toggleMenu(); setTimeout(startTutorial, 350);"><i class="fas fa-circle-question"></i> <span data-i18n="nav_tutorial">MULAI TUTORIAL</span></a>
   </div>
 
-  <a href="/store" target="_blank" class="nav-link"><i class="fas fa-store"></i> <span data-i18n="nav_shop">SHOP</span></a>
-  <a href="#" class="nav-link" onclick="toggleMenu(); setTimeout(startTutorial, 350);"><i class="fas fa-circle-question"></i> <span data-i18n="nav_tutorial">MULAI TUTORIAL</span></a>
+  <a href="#" class="nav-link nav-category" onclick="toggleNavCategory('navServices')" id="navServicesToggle">
+    <i class="fas fa-layer-group"></i> <span data-i18n="nav_services">LAYANAN</span>
+    <i class="fas fa-chevron-down nav-category-arrow"></i>
+  </a>
+  <div class="nav-submenu" id="navServices">
+    <a href="/subdomain" target="_blank" class="nav-link nav-sublink"><i class="fas fa-globe"></i> <span data-i18n="nav_subdomain">SUBDOMAIN</span></a>
+    <a href="/name-generator" target="_blank" class="nav-link nav-sublink"><i class="fas fa-shuffle"></i> <span data-i18n="nav_namegen">NAME GENERATOR</span></a>
+  </div>
 
-  <div class="sidebar-section-label" data-i18n="nav_section_account">Akun Saya</div>
-  <a href="#" class="nav-link" onclick="navTo('profile'); toggleMenu();"><i class="fas fa-user"></i> <span data-i18n="nav_profile">PROFILE</span></a>
-  <a href="#" class="nav-link" onclick="navTo('history'); toggleMenu();"><i class="fas fa-clock-rotate-left"></i> <span data-i18n="nav_history">RIWAYAT KOIN</span></a>
-  <a href="#" class="nav-link" onclick="navTo('redeem'); toggleMenu();"><i class="fas fa-ticket"></i> <span data-i18n="nav_redeem">REDEEM KODE</span></a>
-  <a href="#" class="nav-link" onclick="navTo('referral'); toggleMenu();"><i class="fas fa-user-plus"></i> <span data-i18n="nav_referral">AJAK TEMAN</span></a>
-  <a href="#" class="nav-link" onclick="earnCoin()" style="background:var(--gold);" data-tut="nav-earn"><i class="fas fa-coins" style="color:#111;"></i> <span data-i18n="nav_earn">EARN POLAR COIN</span></a>
+  <a href="#" class="nav-link nav-category" onclick="toggleNavCategory('navAccount')" id="navAccountToggle">
+    <i class="fas fa-user"></i> <span data-i18n="nav_section_account">AKUN SAYA</span>
+    <i class="fas fa-chevron-down nav-category-arrow"></i>
+  </a>
+  <div class="nav-submenu" id="navAccount">
+    <a href="#" class="nav-link nav-sublink" onclick="navTo('profile'); toggleMenu();"><i class="fas fa-user"></i> <span data-i18n="nav_profile">PROFILE</span></a>
+    <a href="#" class="nav-link nav-sublink" onclick="navTo('history'); toggleMenu();"><i class="fas fa-clock-rotate-left"></i> <span data-i18n="nav_history">RIWAYAT KOIN</span></a>
+    <a href="#" class="nav-link nav-sublink" onclick="navTo('redeem'); toggleMenu();"><i class="fas fa-ticket"></i> <span data-i18n="nav_redeem">REDEEM KODE</span></a>
+    <a href="#" class="nav-link nav-sublink" onclick="navTo('referral'); toggleMenu();"><i class="fas fa-user-plus"></i> <span data-i18n="nav_referral">AJAK TEMAN</span></a>
+    <a href="#" class="nav-link nav-sublink" onclick="earnCoin()" style="background:var(--gold);" data-tut="nav-earn"><i class="fas fa-coins" style="color:#111;"></i> <span data-i18n="nav_earn">EARN POLAR COIN</span></a>
+  </div>
 
-  <div class="sidebar-section-label" data-i18n="nav_section_other">Lainnya</div>
-  <a href="#" class="nav-link" onclick="navTo('feedback'); toggleMenu();"><i class="fas fa-comment-dots"></i> <span data-i18n="nav_feedback">FEEDBACK</span></a>
-  <a href="#" class="nav-link" onclick="navTo('requestscript'); toggleMenu();"><i class="fas fa-square-plus"></i> <span data-i18n="nav_request_script">REQUEST SCRIPT</span></a>
-  <a href="#" class="nav-link" onclick="navTo('sponsor'); toggleMenu();"><i class="fas fa-handshake"></i> <span data-i18n="nav_sponsor">SPONSOR</span></a>
-  <a href="https://wa.me/6285715294026" target="_blank" class="nav-link" style="background:var(--green);color:#fff;"><i class="fab fa-whatsapp"></i> <span data-i18n="nav_cs">CUSTOMER SERVICE</span></a>
-  <a href="/privacy" class="nav-link"><i class="fas fa-shield-halved"></i> <span data-i18n="nav_privacy">KEBIJAKAN PRIVASI</span></a>
+  <a href="#" class="nav-link nav-category" onclick="toggleNavCategory('navOther')" id="navOtherToggle">
+    <i class="fas fa-ellipsis"></i> <span data-i18n="nav_section_other">LAINNYA</span>
+    <i class="fas fa-chevron-down nav-category-arrow"></i>
+  </a>
+  <div class="nav-submenu" id="navOther">
+    <a href="#" class="nav-link nav-sublink" onclick="navTo('feedback'); toggleMenu();"><i class="fas fa-comment-dots"></i> <span data-i18n="nav_feedback">FEEDBACK</span></a>
+    <a href="#" class="nav-link nav-sublink" onclick="navTo('requestscript'); toggleMenu();"><i class="fas fa-square-plus"></i> <span data-i18n="nav_request_script">REQUEST SCRIPT</span></a>
+    <a href="#" class="nav-link nav-sublink" onclick="navTo('sponsor'); toggleMenu();"><i class="fas fa-handshake"></i> <span data-i18n="nav_sponsor">SPONSOR</span></a>
+    <a href="https://wa.me/6285715294026" target="_blank" class="nav-link nav-sublink" style="background:var(--green);color:#fff;"><i class="fab fa-whatsapp"></i> <span data-i18n="nav_cs">CUSTOMER SERVICE</span></a>
+    <a href="/privacy" class="nav-link nav-sublink"><i class="fas fa-shield-halved"></i> <span data-i18n="nav_privacy">KEBIJAKAN PRIVASI</span></a>
+  </div>
 
   <a href="#" class="nav-link" onclick="logout()" style="background:var(--red);color:#fff;margin-top:auto;"><i class="fas fa-sign-out-alt"></i> <span data-i18n="nav_logout">LOGOUT</span></a>
 </div>
@@ -236,65 +250,6 @@
       <h1 style="font-weight:900;font-size:clamp(26px,6vw,36px);text-transform:uppercase;"><span data-i18n="sessions_title_1">MY</span> <span style="background:var(--orange);color:#fff;padding:0 12px;transform:skew(-6deg);display:inline-block;border:var(--border-thick);box-shadow:var(--shadow-light);" data-i18n="sessions_title_2">BOTS</span></h1>
     </div>
     <div id="sessionsList"></div>
-  </div>
-
-  <!-- SUBDOMAIN -->
-  <div id="sec-subdomain" class="section">
-    <div style="text-align:center;margin-bottom:16px;">
-      <div class="slot-badge"><i class="fas fa-globe"></i> <span data-i18n="subdomain_badge">SUBDOMAIN GRATIS</span></div>
-      <h1 style="font-weight:900;font-size:clamp(26px,6vw,36px);text-transform:uppercase;"><span data-i18n="subdomain_title_1">KELOLA</span> <span style="background:var(--orange);color:#fff;padding:0 12px;transform:skew(-6deg);display:inline-block;border:var(--border-thick);box-shadow:var(--shadow-light);" data-i18n="subdomain_title_2">SUBDOMAIN</span></h1>
-      <p style="color:var(--text-muted);font-size:13px;font-weight:500;" data-i18n="subdomain_desc">Klaim subdomain buat server kamu pakai Polar Coin</p>
-    </div>
-
-    <div class="card">
-      <div style="margin-bottom:10px;">
-        <label style="font-size:11px;font-weight:800;color:var(--text-muted);display:block;margin-bottom:4px;text-transform:uppercase;" data-i18n="subdomain_domain_label">Pilih Domain</label>
-        <select id="subdomainDomainSelect" onchange="updateSubdomainPreview()" style="width:100%;padding:12px;background:#f0f0f0;border:var(--border-thick);box-shadow:inset 2px 2px 0px 0px #111;color:#111;font-size:14px;font-weight:600;">
-          <option value="" data-i18n="subdomain_domain_loading">Memuat domain...</option>
-        </select>
-      </div>
-      <div style="margin-bottom:10px;">
-        <label style="font-size:11px;font-weight:800;color:var(--text-muted);display:block;margin-bottom:4px;text-transform:uppercase;" data-i18n="subdomain_name_label">Nama Subdomain</label>
-        <div style="display:flex;align-items:center;gap:6px;">
-          <input type="text" id="subdomainNameInput" placeholder="contoh: server1" data-i18n-placeholder="subdomain_name_placeholder" style="flex:1;min-width:0;padding:12px;background:#f0f0f0;border:var(--border-thick);box-shadow:inset 2px 2px 0px 0px #111;color:#111;font-size:14px;font-weight:600;">
-          <span id="subdomainSuffixLabel" style="font-weight:800;font-size:13px;color:var(--text-muted);white-space:nowrap;"></span>
-        </div>
-      </div>
-      <div style="margin-bottom:10px;">
-        <label style="font-size:11px;font-weight:800;color:var(--text-muted);display:block;margin-bottom:4px;text-transform:uppercase;" data-i18n="subdomain_ip_label">IP Address Tujuan</label>
-        <input type="text" id="subdomainIpInput" placeholder="123.45.67.89" style="width:100%;padding:12px;background:#f0f0f0;border:var(--border-thick);box-shadow:inset 2px 2px 0px 0px #111;color:#111;font-size:14px;font-weight:600;">
-      </div>
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-        <span style="font-size:12px;font-weight:700;color:var(--text-muted);" data-i18n="subdomain_price_label">Harga</span>
-        <span style="font-weight:900;font-size:14px;"><i class="fas fa-coins"></i> <span id="subdomainPriceDisplay">0</span></span>
-      </div>
-      <button class="btn btn-orange btn-full" id="subdomainClaimBtn" onclick="claimSubdomain()"><i class="fas fa-globe"></i> <span data-i18n="subdomain_claim_btn">KLAIM SUBDOMAIN</span></button>
-    </div>
-
-    <div class="section-title" data-i18n="subdomain_list_title">🌐 SUBDOMAIN SAYA</div>
-    <div id="subdomainList"></div>
-  </div>
-
-  <!-- NAME GENERATOR -->
-  <div id="sec-namegen" class="section">
-    <div style="text-align:center;margin-bottom:16px;">
-      <div class="slot-badge"><i class="fas fa-shuffle"></i> <span data-i18n="namegen_badge">GRATIS</span></div>
-      <h1 style="font-weight:900;font-size:clamp(26px,6vw,36px);text-transform:uppercase;"><span data-i18n="namegen_title_1">NAME</span> <span style="background:var(--orange);color:#fff;padding:0 12px;transform:skew(-6deg);display:inline-block;border:var(--border-thick);box-shadow:var(--shadow-light);" data-i18n="namegen_title_2">GENERATOR</span></h1>
-      <p style="color:var(--text-muted);font-size:13px;font-weight:500;" data-i18n="namegen_desc">Generate nama orang Indonesia acak, gratis tanpa potong coin</p>
-    </div>
-
-    <div class="card">
-      <div style="margin-bottom:10px;">
-        <label style="font-size:11px;font-weight:800;color:var(--text-muted);display:block;margin-bottom:4px;text-transform:uppercase;" data-i18n="namegen_count_label">Jumlah Nama</label>
-        <input type="number" id="namegenCountInput" value="5" min="1" max="20" style="width:100%;padding:12px;background:#f0f0f0;border:var(--border-thick);box-shadow:inset 2px 2px 0px 0px #111;color:#111;font-size:14px;font-weight:600;">
-      </div>
-      <button class="btn btn-orange btn-full" id="namegenBtn" onclick="generateNames()"><i class="fas fa-shuffle"></i> <span data-i18n="namegen_btn">GENERATE NAMA</span></button>
-    </div>
-
-    <div class="card" id="namegenResultCard" style="display:none;">
-      <div class="section-title" data-i18n="namegen_result_title">📋 HASIL</div>
-      <div id="namegenResultList"></div>
-    </div>
   </div>
 
   <!-- HISTORY -->
