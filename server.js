@@ -52,6 +52,14 @@ app.get('/store', (req, res) => res.sendFile(path.join(__dirname, 'public', 'sto
 
 app.get('/store.html', (req, res) => res.redirect(301, '/store'));
 
+app.get('/subdomain', (req, res) => res.sendFile(path.join(__dirname, 'public', 'subdomain.html')));
+
+app.get('/subdomain.html', (req, res) => res.redirect(301, '/subdomain'));
+
+app.get('/name-generator', (req, res) => res.sendFile(path.join(__dirname, 'public', 'name-generator.html')));
+
+app.get('/name-generator.html', (req, res) => res.redirect(301, '/name-generator'));
+
 app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin.html')));
 
 // Redirect permanen kalau ada yang masih akses .html langsung
@@ -1265,7 +1273,8 @@ async function cfDeleteRecord(domainRow, recordId) {
 }
 
 // Daftar domain aktif buat form claim user — cuma field aman
-app.get('/api/domains', authMiddleware, async (req, res) => {
+// Publik — dipanggil dari halaman /subdomain (bukan cuma dashboard), biar bisa di-crawl SEO
+app.get('/api/domains', async (req, res) => {
   try {
     const rows = await sb('GET', 'polar_domains?active=eq.true&order=sort_order.asc&select=id,domain_name,price_coins');
     res.json({ success: true, domains: rows });
@@ -1425,10 +1434,10 @@ app.delete('/api/admin/domains/:id', authMiddleware, adminMiddleware, async (req
 
 // ============================================================
 // LAYANAN — NAME GENERATOR (npm: indo-name-generator)
-// Fitur ringan, gratis (gak potong coin), cuma butuh login biar konsisten
-// sama fitur "Layanan" lainnya.
+// Fitur ringan, gratis, publik penuh (gak perlu login) — dipakai di halaman
+// standalone /name-generator biar bisa di-crawl SEO.
 // ============================================================
-app.get('/api/tools/name-generator', authMiddleware, (req, res) => {
+app.get('/api/tools/name-generator', (req, res) => {
   try {
     const count = Math.min(Math.max(Number(req.query.count) || 1, 1), 20); // max 20 sekali generate, biar gak disalahgunain
     const names = [];
