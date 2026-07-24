@@ -1,1 +1,126 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#ff5e00">
+<meta name="description" content="Generator nama orang Indonesia acak, gratis dan tanpa perlu login. Cocok buat nama karakter, data dummy, atau kebutuhan testing lainnya.">
+<meta name="robots" content="index, follow">
+<link rel="canonical" href="https://polar.web.id/name-generator">
+<link rel="manifest" href="/manifest.json">
+<link rel="icon" href="/icons/icon-192.png">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<title>Generator Nama Indonesia Gratis — Polar.web.id</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="stylesheet" href="style.css">
+<script>
+  (function() {
+    const saved = localStorage.getItem('polar_theme');
+    const theme = saved || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    if (theme === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+  })();
+</script>
+<style>
+  .tool-wrap { max-width: 640px; margin: 0 auto; padding: 24px 16px 60px; }
+  .tool-hero { text-align: center; margin-bottom: 24px; }
+  .tool-hero h1 { font-size: clamp(26px,6vw,36px); font-weight: 900; text-transform: uppercase; margin-bottom: 6px; }
+  .tool-hero p { color: var(--text-muted); font-size: 13px; font-weight: 500; }
+
+  .namegen-result-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 12px 4px; border-bottom: 2px dashed var(--text-muted);
+  }
+  .namegen-result-row:last-child { border-bottom: none; }
+  .namegen-result-row span { font-weight: 700; font-size: 15px; }
+
+  .seo-note { max-width: 640px; margin: 40px auto 0; padding: 0 16px; color: var(--text-muted); font-size: 13px; line-height: 1.7; }
+  .seo-note h2 { font-size: 15px; font-weight: 900; color: var(--text-main); margin-bottom: 8px; text-transform: uppercase; }
+</style>
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="nav-brand"><span class="brand-icon">✦</span> POLAR.WEB.ID</div>
+  <div class="nav-right">
+    <a href="/dashboard" class="btn btn-white btn-sm" style="text-decoration:none;"><i class="fas fa-house"></i></a>
+    <button class="theme-toggle-btn" onclick="toggleTheme()"><i class="fas fa-moon" id="themeIcon"></i></button>
+  </div>
+</nav>
+
+<div class="tool-wrap">
+  <div class="tool-hero">
+    <div class="slot-badge"><i class="fas fa-shuffle"></i> GRATIS, TANPA LOGIN</div>
+    <h1>Generator <span style="background:var(--orange);color:#fff;padding:0 12px;transform:skew(-6deg);display:inline-block;border:var(--border-thick);box-shadow:var(--shadow-light);">Nama Indonesia</span></h1>
+    <p>Generate nama orang Indonesia acak, langsung pakai, gratis selamanya</p>
+  </div>
+
+  <div class="card">
+    <div style="margin-bottom:10px;">
+      <label style="font-size:11px;font-weight:800;color:var(--text-muted);display:block;margin-bottom:4px;text-transform:uppercase;">Jumlah Nama</label>
+      <input type="number" id="countInput" value="5" min="1" max="20" style="width:100%;padding:12px;background:#f0f0f0;border:var(--border-thick);box-shadow:inset 2px 2px 0px 0px #111;color:#111;font-size:14px;font-weight:600;">
+    </div>
+    <button class="btn btn-orange btn-full" id="genBtn" onclick="generateNames()"><i class="fas fa-shuffle"></i> GENERATE NAMA</button>
+  </div>
+
+  <div class="card" id="resultCard" style="display:none;">
+    <div class="section-title">📋 HASIL</div>
+    <div id="resultList"></div>
+  </div>
+</div>
+
+<div class="seo-note">
+  <h2>Tentang Generator Nama Indonesia</h2>
+  <p>Alat ini bikin nama orang Indonesia secara acak, cocok buat kebutuhan nulis cerita, bikin karakter, data dummy aplikasi, atau testing sistem. Gak perlu daftar atau login, tinggal buka halaman ini dan generate langsung. Layanan ini gratis dan disediakan oleh <a href="/" style="color:var(--orange);font-weight:700;">Polar.web.id</a>, platform hosting bot WhatsApp gratis.</p>
+</div>
+
+<script>
+function toggleTheme() {
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  if (isDark) { document.documentElement.removeAttribute('data-theme'); localStorage.setItem('polar_theme','light'); }
+  else { document.documentElement.setAttribute('data-theme','dark'); localStorage.setItem('polar_theme','dark'); }
+  document.getElementById('themeIcon').className = isDark ? 'fas fa-moon' : 'fas fa-sun';
+}
+document.getElementById('themeIcon').className = document.documentElement.getAttribute('data-theme') === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
+
+async function generateNames() {
+  const countInput = document.getElementById('countInput');
+  let count = Math.min(Math.max(Number(countInput.value) || 5, 1), 20);
+  countInput.value = count;
+
+  const btn = document.getElementById('genBtn');
+  btn.disabled = true;
+
+  try {
+    const res = await fetch(`/api/tools/name-generator?count=${count}`);
+    const data = await res.json();
+    if (!data.success) throw new Error(data.message || 'Gagal generate nama');
+    renderResults(data.names);
+  } catch (e) {
+    alert('❌ ' + e.message);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function renderResults(names) {
+  document.getElementById('resultCard').style.display = 'block';
+  document.getElementById('resultList').innerHTML = names.map(name => `
+    <div class="namegen-result-row">
+      <span>${name}</span>
+      <button class="btn btn-sm btn-white" onclick="copyResult(this, '${String(name).replace(/'/g, "\\'")}')"><i class="fas fa-copy"></i></button>
+    </div>
+  `).join('');
+}
+
+function copyResult(btn, name) {
+  navigator.clipboard.writeText(name).then(() => {
+    const original = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-check"></i>';
+    setTimeout(() => { btn.innerHTML = original; }, 1200);
+  });
+}
+</script>
+</body>
+</html>
 
