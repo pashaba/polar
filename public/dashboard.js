@@ -197,6 +197,7 @@ function showTutorialStep() {
   if (tutStep >= TUTORIAL_STEPS.length && !tutSidebarOpened) {
     document.getElementById('sidebar').classList.add('active');
     document.getElementById('sidebarOverlay').classList.add('active');
+    ['navMain', 'navServices', 'navAccount', 'navOther'].forEach(id => toggleNavCategory(id, true));
     tutSidebarOpened = true;
   }
 
@@ -231,6 +232,7 @@ function finishTutorial() {
   if (tutSidebarOpened) {
     document.getElementById('sidebar').classList.remove('active');
     document.getElementById('sidebarOverlay').classList.remove('active');
+    ['navMain', 'navServices', 'navAccount', 'navOther'].forEach(id => toggleNavCategory(id, false));
   }
 }
 
@@ -275,8 +277,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   loadCoinHistory();
   loadEvents();
   loadReferral();
-  loadDomains();
-  loadSubdomains();
   checkEarnCoinReturn();
   maybeShowChannelPopup();
   setInterval(loadMe, 30000);
@@ -342,9 +342,10 @@ function toggleMenu() {
   document.getElementById('sidebarOverlay').classList.toggle('active');
 }
 
-function toggleServiceMenu(forceOpen) {
-  const menu = document.getElementById('serviceMenu');
-  const toggle = document.getElementById('serviceMenuToggle');
+function toggleNavCategory(id, forceOpen) {
+  const menu = document.getElementById(id);
+  const toggle = document.getElementById(id + 'Toggle');
+  if (!menu || !toggle) return;
   const shouldOpen = forceOpen !== undefined ? forceOpen : !menu.classList.contains('active');
   menu.classList.toggle('active', shouldOpen);
   toggle.classList.toggle('open', shouldOpen);
@@ -376,7 +377,11 @@ applyThemeIcon();
 function navTo(sectionId) {
   document.querySelectorAll('.section').forEach(sec => sec.classList.remove('active'));
   document.getElementById('sec-' + sectionId).classList.add('active');
-  if (sectionId === 'subdomain' || sectionId === 'namegen') toggleServiceMenu(true);
+  const accountSections = ['profile', 'history', 'redeem', 'referral'];
+  const otherSections = ['feedback', 'requestscript', 'sponsor'];
+  if (accountSections.includes(sectionId)) toggleNavCategory('navAccount', true);
+  else if (otherSections.includes(sectionId)) toggleNavCategory('navOther', true);
+  else toggleNavCategory('navMain', true);
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
@@ -606,182 +611,6 @@ async function deleteSession(id, phone) {
   } catch (e) {
     showToast('❌ ' + e.message, 'error');
   }
-}
-
-// ============================================================
-// SUBDOMAIN GRATIS
-// ============================================================
-let currentDomains = [];
-
-async function loadDomains() {
-  try {
-    const res = await fetch('/api/domains', { credentials: 'include' });
-    const data = await res.json();
-    if (!data.success) return;
-    currentDomains = data.domains;
-    renderDomainSelect();
-  } catch (e) {
-    console.error(e);
-  }
-}
-
-function renderDomainSelect() {
-  const select = document.getElementById('subdomainDomainSelect');
-  if (!select) return;
-
-  if (!currentDomains || currentDomains.length === 0) {
-    select.innerHTML = `<option value="">Belum ada domain tersedia</option>`;
-    document.getElementById('subdomainSuffixLabel').textContent = '';
-    document.getElementById('subdomainPriceDisplay').textContent = '0';
-    return;
-  }
-
-  select.innerHTML = currentDomains.map(d => `<option value="${d.id}">${d.domain_name}</option>`).join('');
-  updateSubdomainPreview();
-}
-
-function updateSubdomainPreview() {
-  const select = document.getElementById('subdomainDomainSelect');
-  const domain = currentDomains.find(d => String(d.id) === select.value);
-  document.getElementById('subdomainSuffixLabel').textContent = domain ? `.${domain.domain_name}` : '';
-  document.getElementById('subdomainPriceDisplay').textContent = domain ? domain.price_coins : '0';
-}
-
-async function loadSubdomains() {
-  try {
-    const res = await fetch('/api/subdomains', { credentials: 'include' });
-    const data = await res.json();
-    if (!data.success) return;
-    renderSubdomains(data.subdomains);
-  } catch (e) {
-    console.error(e);
-  }
-}
-
-function renderSubdomains(subdomains) {
-  const list = document.getElementById('subdomainList');
-  if (!list) return;
-
-  if (!subdomains || subdomains.length === 0) {
-    list.innerHTML = `
-      <div class="card" style="text-align:center;padding:40px 16px;">
-        <div style="font-size:48px;margin-bottom:12px;opacity:.3;">🌐</div>
-        <h3 style="font-weight:900;font-size:20px;">Belum Ada Subdomain</h3>
-        <p style="color:var(--text-muted);font-size:13px;font-weight:500;margin-top:4px;">Klaim subdomain gratis pakai form di atas</p>
-      </div>`;
-    return;
-  }
-
-  list.innerHTML = subdomains.map(s => {
-    const domainName = s.polar_domains ? s.polar_domains.domain_name : '';
-    const fullName = `${s.subdomain}.${domainName}`;
-    return `
-      <div class="card">
-        <div class="session-item">
-          <div>
-            <div class="session-phone"><i class="fas fa-globe"></i> ${fullName}</div>
-            <div style="font-size:9px;font-weight:700;color:var(--text-muted);margin-top:2px;">→ ${s.ip_address}</div>
-          </div>
-        </div>
-        <div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:4px;">
-          <button class="btn btn-sm btn-danger" onclick="deleteSubdomain(${s.id}, '${fullName}')"><i class="fas fa-trash"></i> Hapus</button>
-        </div>
-      </div>`;
-  }).join('');
-}
-
-async function claimSubdomain() {
-  const domainId = document.getElementById('subdomainDomainSelect').value;
-  const subdomain = document.getElementById('subdomainNameInput').value.trim();
-  const ip = document.getElementById('subdomainIpInput').value.trim();
-
-  if (!domainId) { showToast('🌐 Pilih domain dulu', 'error'); return; }
-  if (!subdomain) { showToast('🌐 Masukkan nama subdomain', 'error'); return; }
-  if (!ip) { showToast('🌐 Masukkan IP tujuan', 'error'); return; }
-
-  const btn = document.getElementById('subdomainClaimBtn');
-  btn.disabled = true;
-
-  try {
-    const res = await fetch('/api/subdomains', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ domainId, subdomain, ip })
-    });
-    const data = await res.json();
-    if (!data.success) throw new Error(data.message || 'Gagal klaim subdomain');
-
-    currentUser.coins = data.coins;
-    renderUser();
-    showToast(`✅ Subdomain ${data.fullName} berhasil diklaim! 🎉`, 'success');
-    document.getElementById('subdomainNameInput').value = '';
-    document.getElementById('subdomainIpInput').value = '';
-    await loadSubdomains();
-    loadCoinHistory();
-  } catch (e) {
-    showToast('❌ ' + e.message, 'error');
-  } finally {
-    btn.disabled = false;
-  }
-}
-
-async function deleteSubdomain(id, fullName) {
-  if (!confirm(`Hapus subdomain ${fullName}? Coin yang udah dipakai gak akan dikembalikan.`)) return;
-  try {
-    const res = await fetch(`/api/subdomains/${id}`, { method: 'DELETE', credentials: 'include' });
-    const data = await res.json();
-    if (!data.success) throw new Error(data.message || 'Gagal hapus subdomain');
-    showToast('✅ Subdomain dihapus', 'success');
-    await loadSubdomains();
-  } catch (e) {
-    showToast('❌ ' + e.message, 'error');
-  }
-}
-
-// ============================================================
-// LAYANAN — NAME GENERATOR
-// ============================================================
-async function generateNames() {
-  const countInput = document.getElementById('namegenCountInput');
-  let count = Number(countInput.value) || 5;
-  count = Math.min(Math.max(count, 1), 20);
-  countInput.value = count;
-
-  const btn = document.getElementById('namegenBtn');
-  btn.disabled = true;
-
-  try {
-    const res = await fetch(`/api/tools/name-generator?count=${count}`, { credentials: 'include' });
-    const data = await res.json();
-    if (!data.success) throw new Error(data.message || 'Gagal generate nama');
-    renderNamegenResults(data.names);
-  } catch (e) {
-    showToast('❌ ' + e.message, 'error');
-  } finally {
-    btn.disabled = false;
-  }
-}
-
-function renderNamegenResults(names) {
-  const card = document.getElementById('namegenResultCard');
-  const list = document.getElementById('namegenResultList');
-  card.style.display = 'block';
-
-  list.innerHTML = names.map(name => `
-    <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:2px dashed #ccc;">
-      <span style="font-weight:700;font-size:14px;">${name}</span>
-      <button class="btn btn-sm btn-white" onclick="copyNamegenResult(this, '${String(name).replace(/'/g, "\\'")}')"><i class="fas fa-copy"></i></button>
-    </div>
-  `).join('');
-}
-
-function copyNamegenResult(btn, name) {
-  navigator.clipboard.writeText(name).then(() => {
-    showToast(`✅ "${name}" disalin!`, 'success');
-  }).catch(() => {
-    showToast('❌ Gagal menyalin, coba manual', 'error');
-  });
 }
 
 // ============================================================
