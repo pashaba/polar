@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#ff5e00">
+<meta name="description" content="Klaim subdomain gratis buat server kamu di Polar.web.id. Tinggal pilih domain, isi nama subdomain dan IP tujuan, langsung aktif lewat Cloudflare.">
+<meta name="robots" content="index, follow">
+<link rel="canonical" href="https://polar.web.id/subdomain">
+<link rel="manifest" href="/manifest.json">
+<link rel="icon" href="/icons/icon-192.png">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<title>Klaim Subdomain Gratis — Polar.web.id</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="stylesheet" href="style.css">
+<script>
+  (function() {
+    const saved = localStorage.getItem('polar_theme');
+    const theme = saved || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    if (theme === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+  })();
+</script>
+<style>
+  .tool-wrap { max-width: 640px; margin: 0 auto; padding: 24px 16px 60px; }
+  .tool-hero { text-align: center; margin-bottom: 24px; }
+  .tool-hero h1 { font-size: clamp(26px,6vw,36px); font-weight: 900; text-transform: uppercase; margin-bottom: 6px; }
+  .tool-hero p { color: var(--text-muted); font-size: 13px; font-weight: 500; }
+
+  .login-gate { text-align: center; padding: 32px 16px; }
+  .login-gate i { font-size: 40px; opacity: .3; margin-bottom: 10px; }
+  .login-gate p { color: var(--text-muted); font-size: 13px; font-weight: 600; margin-bottom: 16px; }
+
+  .mysub-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 12px 4px; border-bottom: 2px dashed var(--text-muted);
+  }
+  .mysub-row:last-child { border-bottom: none; }
+  .mysub-row .name { font-weight: 800; font-size: 14px; }
+  .mysub-row .ip { font-size: 10px; color: var(--text-muted); font-weight: 700; }
+
+  .seo-note { max-width: 640px; margin: 40px auto 0; padding: 0 16px; color: var(--text-muted); font-size: 13px; line-height: 1.7; }
+  .seo-note h2 { font-size: 15px; font-weight: 900; color: var(--text-main); margin-bottom: 8px; text-transform: uppercase; }
+</style>
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="nav-brand"><span class="brand-icon">✦</span> POLAR.WEB.ID</div>
+  <div class="nav-right">
+    <a href="/dashboard" class="btn btn-white btn-sm" style="text-decoration:none;"><i class="fas fa-house"></i></a>
+    <button class="theme-toggle-btn" onclick="toggleTheme()"><i class="fas fa-moon" id="themeIcon"></i></button>
+  </div>
+</nav>
+
+<div class="tool-wrap">
+  <div class="tool-hero">
+    <div class="slot-badge"><i class="fas fa-globe"></i> SUBDOMAIN GRATIS</div>
+    <h1>Klaim <span style="background:var(--orange);color:#fff;padding:0 12px;transform:skew(-6deg);display:inline-block;border:var(--border-thick);box-shadow:var(--shadow-light);">Subdomain</span></h1>
+    <p>Arahkan subdomain ke server kamu pakai Polar Coin, aktif otomatis lewat Cloudflare</p>
+  </div>
+
+  <div class="card" id="domainListCard">
+    <div class="section-title">🌐 DOMAIN TERSEDIA</div>
+    <div id="domainList"><div style="text-align:center;padding:20px;"><i class="fas fa-spinner fa-pulse"></i></div></div>
+  </div>
+
+  <div id="authArea"></div>
+</div>
+
+<div class="seo-note">
+  <h2>Tentang Subdomain Gratis Polar.web.id</h2>
+  <p>Polar.web.id nyediain subdomain gratis buat kamu yang butuh domain buat server, bot, atau project pribadi tanpa harus beli domain sendiri. Klaim subdomain pakai Polar Coin, DNS record-nya langsung aktif otomatis lewat Cloudflare — gak perlu setting manual. Daftar dulu di <a href="/register" style="color:var(--orange);font-weight:700;">Polar.web.id</a> buat mulai klaim.</p>
+</div>
+
+<script>
+let currentDomains = [];
+let currentUser = null;
+
+function toggleTheme() {
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  if (isDark) { document.documentElement.removeAttribute('data-theme'); localStorage.setItem('polar_theme','light'); }
+  else { document.documentElement.setAttribute('data-theme','dark'); localStorage.setItem('polar_theme','dark'); }
+  document.getElementById('themeIcon').className = isDark ? 'fas fa-moon' : 'fas fa-sun';
+}
+document.getElementById('themeIcon').className = document.documentElement.getAttribute('data-theme') === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
+
+async function loadDomains() {
+  try {
+    const res = await fetch('/api/domains');
+    const data = await res.json();
+    currentDomains = data.success ? data.domains : [];
+    renderDomainList();
+  } catch (e) {
+    document.getElementById('domainList').innerHTML = `<p style="text-align:center;color:var(--text-muted);font-size:13px;">Gagal memuat domain, coba refresh halaman</p>`;
+  }
+}
+
+function renderDomainList() {
+  const list = document.getElementById('domainList');
+  if (currentDomains.length === 0) {
+    list.innerHTML = `<p style="text-align:center;color:var(--text-muted);font-size:13px;">Belum ada domain tersedia saat ini</p>`;
+    return;
+  }
+  list.innerHTML = currentDomains.map(d => `
+    <div class="mysub-row">
+      <span class="name"><i class="fas fa-globe" style="color:var(--orange);"></i> ${d.domain_name}</span>
+      <span><i class="fas fa-coins"></i> ${d.price_coins}</span>
+    </div>
+  `).join('');
+}
+
+async function checkAuth() {
+  try {
+    const res = await fetch('/api/me', { credentials: 'include' });
+    if (!res.ok) throw new Error('not logged in');
+    const data = await res.json();
+    currentUser = data.user;
+    renderClaimForm();
+    loadMySubdomains();
+  } catch (e) {
+    renderLoginGate();
+  }
+}
+
+function renderLoginGate() {
+  document.getElementById('authArea').innerHTML = `
+    <div class="card login-gate">
+      <i class="fas fa-lock"></i>
+      <p>Login dulu buat klaim subdomain & lihat saldo Polar Coin kamu</p>
+      <a href="/login" class="btn btn-orange" style="text-decoration:none;display:inline-flex;"><i class="fas fa-right-to-bracket"></i> LOGIN / DAFTAR</a>
+    </div>`;
+}
+
+function renderClaimForm() {
+  document.getElementById('authArea').innerHTML = `
+    <div class="card">
+      <div class="section-title">🪙 KLAIM SUBDOMAIN <span style="float:right;font-size:11px;color:var(--text-muted);">Saldo: ${currentUser.coins} coin</span></div>
+      <div style="margin-bottom:10px;">
+        <label style="font-size:11px;font-weight:800;color:var(--text-muted);display:block;margin-bottom:4px;text-transform:uppercase;">Pilih Domain</label>
+        <select id="domainSelect" onchange="updatePreview()" style="width:100%;padding:12px;background:#f0f0f0;border:var(--border-thick);box-shadow:inset 2px 2px 0px 0px #111;color:#111;font-size:14px;font-weight:600;">
+          ${currentDomains.map(d => `<option value="${d.id}">${d.domain_name}</option>`).join('')}
+        </select>
+      </div>
+      <div style="margin-bottom:10px;">
+        <label style="font-size:11px;font-weight:800;color:var(--text-muted);display:block;margin-bottom:4px;text-transform:uppercase;">Nama Subdomain</label>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <input type="text" id="subInput" placeholder="contoh: server1" style="flex:1;min-width:0;padding:12px;background:#f0f0f0;border:var(--border-thick);box-shadow:inset 2px 2px 0px 0px #111;color:#111;font-size:14px;font-weight:600;">
+          <span id="suffixLabel" style="font-weight:800;font-size:13px;color:var(--text-muted);white-space:nowrap;"></span>
+        </div>
+      </div>
+      <div style="margin-bottom:10px;">
+        <label style="font-size:11px;font-weight:800;color:var(--text-muted);display:block;margin-bottom:4px;text-transform:uppercase;">IP Address Tujuan</label>
+        <input type="text" id="ipInput" placeholder="123.45.67.89" style="width:100%;padding:12px;background:#f0f0f0;border:var(--border-thick);box-shadow:inset 2px 2px 0px 0px #111;color:#111;font-size:14px;font-weight:600;">
+      </div>
+      <button class="btn btn-orange btn-full" id="claimBtn" onclick="claimSubdomain()"><i class="fas fa-globe"></i> KLAIM SUBDOMAIN</button>
+    </div>
+
+    <div class="card">
+      <div class="section-title">📋 SUBDOMAIN SAYA</div>
+      <div id="mySubList"><div style="text-align:center;padding:16px;"><i class="fas fa-spinner fa-pulse"></i></div></div>
+    </div>`;
+  updatePreview();
+}
+
+function updatePreview() {
+  const select = document.getElementById('domainSelect');
+  const domain = currentDomains.find(d => String(d.id) === select.value);
+  document.getElementById('suffixLabel').textContent = domain ? `.${domain.domain_name}` : '';
+}
+
+async function loadMySubdomains() {
+  try {
+    const res = await fetch('/api/subdomains', { credentials: 'include' });
+    const data = await res.json();
+    if (!data.success) return;
+    renderMySubdomains(data.subdomains);
+  } catch (e) {}
+}
+
+function renderMySubdomains(subs) {
+  const list = document.getElementById('mySubList');
+  if (!list) return;
+  if (!subs || subs.length === 0) {
+    list.innerHTML = `<p style="text-align:center;color:var(--text-muted);font-size:13px;">Belum ada subdomain yang diklaim</p>`;
+    return;
+  }
+  list.innerHTML = subs.map(s => {
+    const fullName = `${s.subdomain}.${s.polar_domains ? s.polar_domains.domain_name : ''}`;
+    return `
+      <div class="mysub-row">
+        <div>
+          <div class="name">${fullName}</div>
+          <div class="ip">→ ${s.ip_address}</div>
+        </div>
+        <button class="btn btn-sm btn-danger" onclick="deleteSubdomain(${s.id}, '${fullName}')"><i class="fas fa-trash"></i></button>
+      </div>`;
+  }).join('');
+}
+
+async function claimSubdomain() {
+  const domainId = document.getElementById('domainSelect').value;
+  const subdomain = document.getElementById('subInput').value.trim();
+  const ip = document.getElementById('ipInput').value.trim();
+
+  if (!domainId || !subdomain || !ip) { alert('🌐 Lengkapi semua field dulu'); return; }
+
+  const btn = document.getElementById('claimBtn');
+  btn.disabled = true;
+  try {
+    const res = await fetch('/api/subdomains', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ domainId, subdomain, ip })
+    });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.message || 'Gagal klaim subdomain');
+    currentUser.coins = data.coins;
+    alert(`✅ Subdomain ${data.fullName} berhasil diklaim!`);
+    document.getElementById('subInput').value = '';
+    document.getElementById('ipInput').value = '';
+    renderClaimForm();
+    loadMySubdomains();
+  } catch (e) {
+    alert('❌ ' + e.message);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function deleteSubdomain(id, fullName) {
+  if (!confirm(`Hapus subdomain ${fullName}? Coin yang udah dipakai gak akan dikembalikan.`)) return;
+  try {
+    const res = await fetch(`/api/subdomains/${id}`, { method: 'DELETE', credentials: 'include' });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.message || 'Gagal hapus subdomain');
+    loadMySubdomains();
+  } catch (e) {
+    alert('❌ ' + e.message);
+  }
+}
+
+loadDomains();
+checkAuth();
+</script>
+</body>
+</html>
