@@ -132,6 +132,14 @@ function renderLoginGate() {
     </div>`;
 }
 
+const RECORD_TYPE_INFO = {
+  A: { label: 'Alamat IP (IPv4)', placeholder: '123.45.67.89' },
+  AAAA: { label: 'Alamat IP (IPv6)', placeholder: '2606:4700:4700::1111' },
+  CNAME: { label: 'Domain Tujuan', placeholder: 'contoh: server.domainlain.com' },
+  TXT: { label: 'Isi Teks', placeholder: 'contoh: v=spf1 include:_spf.google.com ~all' },
+  MX: { label: 'Mail Server Tujuan', placeholder: 'contoh: mail.domainlain.com' }
+};
+
 function renderClaimForm() {
   document.getElementById('authArea').innerHTML = `
     <div class="card">
@@ -150,8 +158,22 @@ function renderClaimForm() {
         </div>
       </div>
       <div style="margin-bottom:10px;">
-        <label style="font-size:11px;font-weight:800;color:var(--text-muted);display:block;margin-bottom:4px;text-transform:uppercase;">IP Address Tujuan</label>
-        <input type="text" id="ipInput" placeholder="123.45.67.89" style="width:100%;padding:12px;background:#f0f0f0;border:var(--border-thick);box-shadow:inset 2px 2px 0px 0px #111;color:#111;font-size:14px;font-weight:600;">
+        <label style="font-size:11px;font-weight:800;color:var(--text-muted);display:block;margin-bottom:4px;text-transform:uppercase;">Tipe Record</label>
+        <select id="typeSelect" onchange="updateContentLabel()" style="width:100%;padding:12px;background:#f0f0f0;border:var(--border-thick);box-shadow:inset 2px 2px 0px 0px #111;color:#111;font-size:14px;font-weight:600;">
+          <option value="A">A — Arahkan ke alamat IPv4</option>
+          <option value="AAAA">AAAA — Arahkan ke alamat IPv6</option>
+          <option value="CNAME">CNAME — Alias ke domain lain</option>
+          <option value="TXT">TXT — Teks bebas (verifikasi, SPF, dll)</option>
+          <option value="MX">MX — Server email</option>
+        </select>
+      </div>
+      <div style="margin-bottom:10px;">
+        <label id="contentLabel" style="font-size:11px;font-weight:800;color:var(--text-muted);display:block;margin-bottom:4px;text-transform:uppercase;">Alamat IP (IPv4)</label>
+        <input type="text" id="contentInput" placeholder="123.45.67.89" style="width:100%;padding:12px;background:#f0f0f0;border:var(--border-thick);box-shadow:inset 2px 2px 0px 0px #111;color:#111;font-size:14px;font-weight:600;">
+      </div>
+      <div id="priorityWrap" style="margin-bottom:10px;display:none;">
+        <label style="font-size:11px;font-weight:800;color:var(--text-muted);display:block;margin-bottom:4px;text-transform:uppercase;">Prioritas MX</label>
+        <input type="number" id="priorityInput" value="10" min="0" style="width:100%;padding:12px;background:#f0f0f0;border:var(--border-thick);box-shadow:inset 2px 2px 0px 0px #111;color:#111;font-size:14px;font-weight:600;">
       </div>
       <button class="btn btn-orange btn-full" id="claimBtn" onclick="claimSubdomain()"><i class="fas fa-globe"></i> KLAIM SUBDOMAIN</button>
     </div>
@@ -167,6 +189,14 @@ function updatePreview() {
   const select = document.getElementById('domainSelect');
   const domain = currentDomains.find(d => String(d.id) === select.value);
   document.getElementById('suffixLabel').textContent = domain ? `.${domain.domain_name}` : '';
+}
+
+function updateContentLabel() {
+  const type = document.getElementById('typeSelect').value;
+  const info = RECORD_TYPE_INFO[type];
+  document.getElementById('contentLabel').textContent = info.label;
+  document.getElementById('contentInput').placeholder = info.placeholder;
+  document.getElementById('priorityWrap').style.display = type === 'MX' ? 'block' : 'none';
 }
 
 async function loadMySubdomains() {
@@ -187,11 +217,12 @@ function renderMySubdomains(subs) {
   }
   list.innerHTML = subs.map(s => {
     const fullName = `${s.subdomain}.${s.polar_domains ? s.polar_domains.domain_name : ''}`;
+    const type = s.record_type || 'A';
     return `
       <div class="mysub-row">
         <div>
-          <div class="name">${fullName}</div>
-          <div class="ip">→ ${s.ip_address}</div>
+          <div class="name"><span style="background:var(--orange);color:#fff;font-size:9px;font-weight:900;padding:2px 6px;margin-right:6px;">${type}</span>${fullName}</div>
+          <div class="ip">→ ${s.content}${type === 'MX' && s.priority != null ? ` (prioritas ${s.priority})` : ''}</div>
         </div>
         <button class="btn btn-sm btn-danger" onclick="deleteSubdomain(${s.id}, '${fullName}')"><i class="fas fa-trash"></i></button>
       </div>`;
@@ -201,9 +232,11 @@ function renderMySubdomains(subs) {
 async function claimSubdomain() {
   const domainId = document.getElementById('domainSelect').value;
   const subdomain = document.getElementById('subInput').value.trim();
-  const ip = document.getElementById('ipInput').value.trim();
+  const recordType = document.getElementById('typeSelect').value;
+  const content = document.getElementById('contentInput').value.trim();
+  const priority = document.getElementById('priorityInput').value;
 
-  if (!domainId || !subdomain || !ip) { alert('🌐 Lengkapi semua field dulu'); return; }
+  if (!domainId || !subdomain || !content) { alert('🌐 Lengkapi semua field dulu'); return; }
 
   const btn = document.getElementById('claimBtn');
   btn.disabled = true;
@@ -212,14 +245,12 @@ async function claimSubdomain() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
-      body: JSON.stringify({ domainId, subdomain, ip })
+      body: JSON.stringify({ domainId, subdomain, recordType, content, priority })
     });
     const data = await res.json();
     if (!data.success) throw new Error(data.message || 'Gagal klaim subdomain');
     currentUser.coins = data.coins;
     alert(`✅ Subdomain ${data.fullName} berhasil diklaim!`);
-    document.getElementById('subInput').value = '';
-    document.getElementById('ipInput').value = '';
     renderClaimForm();
     loadMySubdomains();
   } catch (e) {
